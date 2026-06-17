@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background-color: #09090b;
+  color: #e4e4e7;
+}
+
+* {
+  scrollbar-color: #3f3f46 #18181b;
+}
