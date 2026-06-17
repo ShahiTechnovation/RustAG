@@ -1,0 +1,42 @@
+[package]
+name = "rustag-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "RustAG core: LiteSVM-backed staging runtime with lazy mainnet account mirroring"
+
+[dependencies]
+litesvm.workspace = true
+solana-address.workspace = true
+solana-pubkey.workspace = true
+solana-account.workspace = true
+solana-hash.workspace = true
+solana-instruction.workspace = true
+solana-message.workspace = true
+solana-transaction.workspace = true
+solana-signature.workspace = true
+solana-address-lookup-table-interface.workspace = true
+
+rustag-mirror.workspace = true
+
+tokio.workspace = true
+sqlx.workspace = true
+moka.workspace = true
+dashmap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+bs58.workspace = true
+bincode.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+
+[dev-dependencies]
+solana-keypair.workspace = true
+solana-signer.workspace = true
+solana-system-interface.workspace = true
+tokio = { workspace = true }
