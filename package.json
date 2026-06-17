@@ -1,0 +1,19 @@
+{
+  "name": "rustag",
+  "version": "0.1.0",
+  "private": true,
+  "description": "RustAG — a persistent, mainnet-mirroring staging environment for Solana programs",
+  "packageManager": "pnpm@10.27.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "dev": "turbo run dev",
+    "dashboard": "pnpm --filter dashboard dev"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0"
+  }
+}

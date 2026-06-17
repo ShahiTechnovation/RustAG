@@ -1,0 +1,38 @@
+# RustAG per-project configuration.
+# Committed to your repo so every developer gets the same staging setup.
+
+[stagenet]
+name = "my-project"
+network = "mainnet-beta"
+
+[rpc]
+port = 8899
+ws_port = 8900
+
+[mirror]
+# Mainnet RPC endpoint. Use ${VAR} to read from the environment.
+mainnet_rpc = "${RUSTAG_MAINNET_RPC}"
+# How often to re-sync CLEAN oracle accounts (seconds).
+oracle_sync_interval = 30
+# How often to re-sync other CLEAN accounts (seconds).
+default_sync_interval = 300
+# Max mainnet RPC requests per second (backpressure).
+max_rps = 10
+
+[preload]
+programs = ["jupiter-v6", "pyth", "raydium-amm", "spl-token"]
+
+[limits]
+max_accounts_per_stagenet = 50_000
+max_compute_units_per_tx = 1_400_000
+
+[api]
+# REST API for the dashboard.
+port = 9000
+cors_origins = ["http://localhost:3000"]
+
+[storage]
+# Phase 1: SQLite.
+db_path = ".rustag/db.sqlite"
+# Phase 2: Postgres (uncomment and set DATABASE_URL).
+# database_url = "${DATABASE_URL}"

@@ -1,0 +1,39 @@
+# Rust
+/target
+**/*.rs.bk
+*.pdb
+
+# RustAG local state
+/.rustag
+.rustag/
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+.spike-build.log
+
+# Env
+.env
+.env.local
+!.env.example
+
+# Node / TypeScript
+node_modules/
+.pnpm-store/
+dist/
+.next/
+out/
+*.tsbuildinfo
+.turbo/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+Thumbs.db
+
+# Local-only notes & docs (kept out of the public repo; README is tracked)
+/docs/
+/STAGESVM_PHASE1_PROMPT.md
+*.log
