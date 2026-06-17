@@ -1,0 +1,25 @@
+[package]
+name = "rustag-mirror"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "RustAG mainnet mirror: lazy account fetch + background oracle sync"
+
+[dependencies]
+solana-address.workspace = true
+solana-pubkey.workspace = true
+solana-account.workspace = true
+
+reqwest.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+bs58.workspace = true
+base64.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+chrono.workspace = true
+governor.workspace = true
