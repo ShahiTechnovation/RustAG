@@ -8,6 +8,11 @@ authors.workspace = true
 repository.workspace = true
 description = "RustAG mainnet mirror: lazy account fetch + background oracle sync"
 
+[features]
+# Real-time push mirror over the `accountSubscribe` WebSocket (Phase 2).
+# Off by default so the standard build stays dependency-light.
+realtime = ["dep:tokio-tungstenite", "dep:futures-util"]
+
 [dependencies]
 solana-address.workspace = true
 solana-pubkey.workspace = true
@@ -23,3 +28,7 @@ thiserror.workspace = true
 tracing.workspace = true
 chrono.workspace = true
 governor.workspace = true
+
+# --- Phase 2 real-time mirror (optional) ---
+tokio-tungstenite = { workspace = true, optional = true }
+futures-util = { workspace = true, optional = true }

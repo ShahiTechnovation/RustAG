@@ -5,6 +5,9 @@ members = [
     "crates/rustag-mirror",
     "crates/rustag-rpc",
     "crates/rustag-cli",
+    "crates/rustag-scheduler",
+    "crates/rustag-sim",
+    "crates/rustag-cloud",
 ]
 
 [workspace.package]
@@ -114,10 +117,21 @@ chrono = { version = "0.4", features = ["serde"] }
 # --- Rate limiting ---
 governor = "0.6"
 
+# --- Hashing (control-plane API-key digests) ---
+sha2 = "0.10"
+
+# --- Real-time mirror (Phase 2, feature-gated) ---
+# Pure-Rust WebSocket client for the standard `accountSubscribe` push stream.
+# rustls (no OpenSSL/protoc) keeps it consistent with the reqwest TLS stack.
+tokio-tungstenite = { version = "0.24", features = ["rustls-tls-webpki-roots"] }
+
 # --- Internal crates ---
 rustag-core = { path = "crates/rustag-core" }
 rustag-mirror = { path = "crates/rustag-mirror" }
 rustag-rpc = { path = "crates/rustag-rpc" }
+rustag-scheduler = { path = "crates/rustag-scheduler" }
+rustag-sim = { path = "crates/rustag-sim" }
+rustag-cloud = { path = "crates/rustag-cloud" }
 
 [profile.release]
 opt-level = 3

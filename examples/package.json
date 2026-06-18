@@ -7,7 +7,9 @@
   "scripts": {
     "pyth": "tsx pyth-oracle-test.ts",
     "raydium": "tsx raydium-pool-test.ts",
-    "jupiter": "tsx jupiter-swap-test.ts"
+    "jupiter": "tsx jupiter-swap-test.ts",
+    "simulate": "tsx simulation-stress-test.ts",
+    "scheduler": "tsx scheduler-faucet.ts"
   },
   "dependencies": {
     "@solana/web3.js": "^1.98.0"

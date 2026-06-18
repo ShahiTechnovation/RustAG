@@ -1,0 +1,32 @@
+# Example: spin up an ephemeral RustAG stagenet per pull request, run your
+# integration tests against real mainnet state, and tear it down automatically.
+#
+# Copy this into your own repo and point `run:` at your test command. Set a
+# `RUSTAG_MAINNET_RPC` repository secret to enable mainnet mirroring (omit it to
+# run fully offline).
+name: PR Stagenet
+
+on:
+  pull_request:
+
+jobs:
+  integration:
+    name: Integration tests vs. mainnet state
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run tests against an ephemeral stagenet
+        uses: ./.github/actions/rustag
+        with:
+          mainnet-rpc: ${{ secrets.RUSTAG_MAINNET_RPC }}
+          preload: "pyth raydium"
+          run: |
+            cd examples
+            npm install --no-audit --no-fund
+            npx tsx pyth-oracle-test.ts

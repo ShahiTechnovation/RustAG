@@ -4,8 +4,10 @@ pub mod airdrop;
 pub mod create;
 pub mod logs;
 pub mod manage;
+pub mod metrics;
 pub mod overrides;
 pub mod preload;
+pub mod schedule;
 pub mod start;
 
 use std::path::PathBuf;

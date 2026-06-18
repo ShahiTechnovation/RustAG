@@ -8,6 +8,10 @@ authors.workspace = true
 repository.workspace = true
 description = "RustAG core: LiteSVM-backed staging runtime with lazy mainnet account mirroring"
 
+[features]
+# Forward the real-time push mirror (Phase 2). Off by default.
+realtime = ["rustag-mirror/realtime"]
+
 [dependencies]
 litesvm.workspace = true
 solana-address.workspace = true

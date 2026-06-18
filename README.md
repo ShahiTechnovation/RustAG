@@ -68,15 +68,19 @@ NEXT_PUBLIC_RUSTAG_API_URL=http://localhost:9000 pnpm --filter dashboard dev
 
 ## Workspace layout
 
-| Crate / package        | What it is                                                            |
-| ---------------------- | -------------------------------------------------------------------- |
-| `crates/rustag-core`   | The runtime: LiteSVM + account state machine + persistence + engine. |
-| `crates/rustag-mirror` | The mainnet fetcher: JSON-RPC over `reqwest`, registry, rate limiter. |
-| `crates/rustag-rpc`    | Solana-compatible JSON-RPC + WebSocket + REST (axum).                 |
-| `crates/rustag-cli`    | The `rustag` binary.                                                  |
-| `packages/sdk`         | `@rustag/sdk` — TypeScript client for the REST API.                   |
-| `packages/dashboard`   | Next.js 15 account explorer + transaction feed.                      |
-| `examples/`            | Runnable examples against a live stagenet.                            |
+| Crate / package           | What it is                                                            |
+| ------------------------- | -------------------------------------------------------------------- |
+| `crates/rustag-core`      | The runtime: LiteSVM + account state machine + persistence + engine. |
+| `crates/rustag-mirror`    | The mainnet fetcher: JSON-RPC over `reqwest`, registry, rate limiter, real-time push (feature `realtime`). |
+| `crates/rustag-rpc`       | Solana-compatible JSON-RPC + WebSocket + REST (axum).                 |
+| `crates/rustag-cli`       | The `rustag` binary.                                                  |
+| `crates/rustag-scheduler` | **Phase 2** — Activity Scheduler (cron / interval on-chain actions). |
+| `crates/rustag-sim`       | **Phase 2** — simulation framework (fork, replay, stress, compare).  |
+| `crates/rustag-cloud`     | **Phase 2** — multi-tenant cloud control plane (`rustag-cloud`).     |
+| `packages/sdk`            | `@rustag/sdk` — TypeScript client for the REST API.                  |
+| `packages/dashboard`      | Next.js 15 dashboard: accounts, transactions, analytics, scheduler.  |
+| `packages/anchor-plugin`  | **Phase 2** — `@rustag/anchor-plugin` ephemeral stagenet for Anchor. |
+| `examples/`               | Runnable examples against a live stagenet.                           |
 
 ---
 
@@ -93,6 +97,9 @@ NEXT_PUBLIC_RUSTAG_API_URL=http://localhost:9000 pnpm --filter dashboard dev
 | `rustag override -s name --pubkey <pk> --lamports <n>` | Pin account state.                   |
 | `rustag preload -s name jupiter pyth raydium`      | Load real mainnet programs/oracles.      |
 | `rustag logs -s name --follow`                     | Tail the transaction feed.               |
+| `rustag schedule add <name> "<expr>" --airdrop <pk> --sol <n>` | **Phase 2** — recurring on-chain activity. |
+| `rustag schedule list / rm <id> / toggle <id>`     | **Phase 2** — manage activities.         |
+| `rustag metrics [--series <s>] [--limit <n>]`      | **Phase 2** — analytics time-series.     |
 
 ---
 
@@ -118,8 +125,23 @@ dashboard. Known limitation: executing *arbitrary mainnet programs* end-to-end (
 full Jupiter swap) needs the more complete program-loading planned for Phase 2 — your own
 deployed program reading real mainnet state works today.
 
-Phase 2: Yellowstone gRPC sync, cloud stagenets, multi-tenant isolation, an Anchor
-plugin, and a GitHub Action.
+**Phase 2 (shipped in this repo):**
+
+- **Real-time mirror** — push updates over the `accountSubscribe` WebSocket
+  (the protocol Yellowstone/Geyser RPCs serve), sub-second oracle refresh.
+  Build with `--features realtime`.
+- **Activity Scheduler** — recurring on-chain actions (`@every`/cron).
+- **Simulation framework** — fork a stagenet, replay/stress/compare scenarios
+  ("what if 1,000 users liquidate at once?").
+- **Analytics** — TVL / tx-volume / mirror-growth time-series + dashboard charts.
+- **Cloud control plane** (`rustag-cloud`) — multi-tenant orchestration of hosted
+  stagenets behind a reverse proxy with API-key auth and process isolation.
+- **GitHub Action** — ephemeral stagenet per PR.
+- **Anchor plugin** — `@rustag/anchor-plugin` for tests against real mainnet state.
+
+See [`docs/PHASE2.md`](docs/PHASE2.md) for usage, the
+[Phase 1 completion checklist](docs/phase1-completion-checklist.md), and the
+[Phase 2 master prompt](docs/STAGESVM_PHASE2_PROMPT.md).
 
 ---
 

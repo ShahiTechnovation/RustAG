@@ -5,11 +5,14 @@ use std::str::FromStr;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post};
 use axum::{Json, Router};
+use base64::Engine;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use solana_pubkey::Pubkey;
+use solana_transaction::versioned::VersionedTransaction;
+use uuid::Uuid;
 
 use rustag_core::AccountOverride;
 
@@ -27,6 +30,12 @@ pub fn router(state: AppState) -> Router {
         .route("/api/airdrop", post(airdrop))
         .route("/api/override", post(override_account))
         .route("/api/preload", post(preload))
+        // --- Phase 2: scheduler, analytics, simulation ---
+        .route("/api/schedules", get(list_schedules).post(create_schedule))
+        .route("/api/schedules/{id}", delete(delete_schedule))
+        .route("/api/schedules/{id}/toggle", post(toggle_schedule))
+        .route("/api/metrics", get(get_metrics))
+        .route("/api/simulate", post(simulate))
         .with_state(state)
 }
 
@@ -204,4 +213,193 @@ async fn preload(State(state): State<AppState>, Json(body): Json<PreloadBody>) -
     let mut sn = state.stagenet.write().await;
     let loaded = sn.preload(&entries).await.map_err(server_err)?;
     Ok(Json(json!({ "loaded": loaded, "unknown": unknown })))
+}
+
+// --- Phase 2: Activity Scheduler -------------------------------------------
+
+fn schedule_json(s: &rustag_core::ScheduleRecord) -> Value {
+    let mut action: Value = serde_json::from_str(&s.action_json).unwrap_or(Value::Null);
+    redact_secrets(&mut action);
+    json!({
+        "id": s.id.to_string(),
+        "name": s.name,
+        "schedule": s.schedule,
+        "action": action,
+        "enabled": s.enabled,
+        "runCount": s.run_count,
+        "lastRun": s.last_run.map(|t| t.to_rfc3339()),
+        "lastStatus": s.last_status,
+        "lastSignature": s.last_signature,
+        "createdAt": s.created_at.to_rfc3339(),
+    })
+}
+
+/// Mask sensitive fields (e.g. a `Transfer` action's `secret_key`) before a
+/// schedule action is serialized into an API response. The full value is kept
+/// in storage for execution; only the read path is redacted.
+fn redact_secrets(action: &mut Value) {
+    if let Some(obj) = action.as_object_mut() {
+        if let Some(secret) = obj.get_mut("secret_key") {
+            *secret = Value::String("***redacted***".to_string());
+        }
+    }
+}
+
+async fn list_schedules(State(state): State<AppState>) -> ApiResult {
+    let sn = state.stagenet.read().await;
+    let store = sn.store();
+    let id = sn.id();
+    drop(sn);
+    let schedules = store.list_schedules(&id, false).await.map_err(server_err)?;
+    let out: Vec<Value> = schedules.iter().map(schedule_json).collect();
+    Ok(Json(json!({ "schedules": out })))
+}
+
+#[derive(Deserialize)]
+struct CreateScheduleBody {
+    name: String,
+    schedule: String,
+    action: rustag_scheduler::Action,
+}
+
+async fn create_schedule(
+    State(state): State<AppState>,
+    Json(body): Json<CreateScheduleBody>,
+) -> ApiResult {
+    let sn = state.stagenet.read().await;
+    let store = sn.store();
+    let id = sn.id();
+    drop(sn);
+    let rec =
+        rustag_scheduler::register_activity(&store, id, &body.name, &body.schedule, &body.action)
+            .await
+            .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+    Ok(Json(schedule_json(&rec)))
+}
+
+async fn delete_schedule(State(state): State<AppState>, Path(id): Path<String>) -> ApiResult {
+    let uuid = Uuid::parse_str(&id)
+        .map_err(|_| (StatusCode::BAD_REQUEST, "invalid schedule id".to_string()))?;
+    let sn = state.stagenet.read().await;
+    let store = sn.store();
+    drop(sn);
+    let removed = store.delete_schedule(&uuid).await.map_err(server_err)?;
+    Ok(Json(json!({ "ok": removed })))
+}
+
+#[derive(Deserialize)]
+struct ToggleBody {
+    enabled: bool,
+}
+
+async fn toggle_schedule(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(body): Json<ToggleBody>,
+) -> ApiResult {
+    let uuid = Uuid::parse_str(&id)
+        .map_err(|_| (StatusCode::BAD_REQUEST, "invalid schedule id".to_string()))?;
+    let sn = state.stagenet.read().await;
+    let store = sn.store();
+    drop(sn);
+    store
+        .set_schedule_enabled(&uuid, body.enabled)
+        .await
+        .map_err(server_err)?;
+    Ok(Json(json!({ "ok": true, "enabled": body.enabled })))
+}
+
+// --- Phase 2: Analytics ----------------------------------------------------
+
+#[derive(Deserialize)]
+struct MetricsQuery {
+    series: Option<String>,
+    limit: Option<i64>,
+}
+
+async fn get_metrics(State(state): State<AppState>, Query(q): Query<MetricsQuery>) -> ApiResult {
+    let sn = state.stagenet.read().await;
+    let store = sn.store();
+    let id = sn.id();
+    drop(sn);
+    let limit = q.limit.unwrap_or(500).clamp(1, 10_000);
+    let series_list: Vec<&str> = match q.series.as_deref() {
+        Some(s) => vec![s],
+        None => rustag_core::metrics::ALL_SERIES.to_vec(),
+    };
+    let mut out = serde_json::Map::new();
+    for series in series_list {
+        let points = store
+            .query_metrics(&id, series, limit)
+            .await
+            .map_err(server_err)?;
+        let arr: Vec<Value> = points
+            .iter()
+            .map(|p| json!({ "t": p.recorded_at.to_rfc3339(), "v": p.value }))
+            .collect();
+        out.insert(series.to_string(), Value::Array(arr));
+    }
+    Ok(Json(json!({ "metrics": Value::Object(out) })))
+}
+
+// --- Phase 2: Simulation ---------------------------------------------------
+
+#[derive(Deserialize)]
+struct SimulateBody {
+    label: Option<String>,
+    /// Encoded, signed transactions to replay against a fork of the stagenet.
+    transactions: Vec<String>,
+    /// `base64` (default) or `base58`.
+    encoding: Option<String>,
+}
+
+/// Upper bound on transactions per simulation request (keeps the under-lock fork
+/// snapshot and the overall replay bounded).
+const MAX_SIMULATE_TXS: usize = 5_000;
+
+async fn simulate(State(state): State<AppState>, Json(body): Json<SimulateBody>) -> ApiResult {
+    let label = body.label.unwrap_or_else(|| "scenario".to_string());
+    if body.transactions.len() > MAX_SIMULATE_TXS {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            format!("too many transactions (max {MAX_SIMULATE_TXS})"),
+        ));
+    }
+    let enc = body.encoding.as_deref();
+    let mut txs = Vec::with_capacity(body.transactions.len());
+    for blob in &body.transactions {
+        txs.push(decode_tx(blob, enc).map_err(|m| (StatusCode::BAD_REQUEST, m))?);
+    }
+
+    // Hold the read lock only long enough to snapshot the base into an isolated
+    // fork; run the (potentially long) replay against the owned fork with no lock
+    // held, so a large batch can't starve writers on the live stagenet.
+    let mut fork = {
+        let sn = state.stagenet.read().await;
+        sn.fork(&format!("sim-{label}")).await.map_err(server_err)?
+    };
+    let report = rustag_sim::replay(&mut fork, label, txs)
+        .await
+        .map_err(server_err)?;
+    Ok(Json(serde_json::to_value(report).map_err(server_err)?))
+}
+
+/// Decode a base64/base58 transaction blob into a [`VersionedTransaction`].
+fn decode_tx(
+    blob: &str,
+    encoding: Option<&str>,
+) -> std::result::Result<VersionedTransaction, String> {
+    let bytes = match encoding {
+        Some("base64") => base64::engine::general_purpose::STANDARD
+            .decode(blob)
+            .map_err(|e| format!("base64 decode: {e}"))?,
+        Some("base58") => bs58::decode(blob)
+            .into_vec()
+            .map_err(|e| format!("base58 decode: {e}"))?,
+        _ => base64::engine::general_purpose::STANDARD
+            .decode(blob)
+            .or_else(|_| bs58::decode(blob).into_vec())
+            .map_err(|e| format!("decode: {e}"))?,
+    };
+    bincode::deserialize::<VersionedTransaction>(&bytes).map_err(|e| format!("deserialize: {e}"))
 }

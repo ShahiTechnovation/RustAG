@@ -13,6 +13,8 @@ mod account;
 mod error;
 mod fetcher;
 mod rate_limiter;
+#[cfg(feature = "realtime")]
+mod realtime;
 pub mod registry;
 mod scheduler;
 
@@ -20,4 +22,6 @@ pub use account::{AccountCategory, RemoteAccount};
 pub use error::MirrorError;
 pub use fetcher::{MainnetMirror, MAX_ACCOUNTS_PER_REQUEST};
 pub use rate_limiter::RpcRateLimiter;
+#[cfg(feature = "realtime")]
+pub use realtime::RealtimeMirror;
 pub use scheduler::SyncIntervals;

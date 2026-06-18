@@ -13,6 +13,10 @@ default-run = "rustag"
 name = "rustag"
 path = "src/main.rs"
 
+[features]
+# Build the `rustag` binary with the real-time push mirror. Off by default.
+realtime = ["rustag-rpc/realtime"]
+
 [dependencies]
 rustag-core.workspace = true
 rustag-rpc.workspace = true

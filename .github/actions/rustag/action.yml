@@ -1,0 +1,125 @@
+name: "RustAG Stagenet"
+description: "Spin up an ephemeral, mainnet-mirroring Solana stagenet for this job, run tests against it, then tear it down."
+branding:
+  icon: "box"
+  color: "purple"
+
+inputs:
+  mainnet-rpc:
+    description: "Mainnet RPC endpoint for the lazy mirror. Leave empty to run fully offline (--no-mirror)."
+    required: false
+    default: ""
+  preload:
+    description: "Space-separated programs/oracles to preload (e.g. 'jupiter pyth raydium')."
+    required: false
+    default: ""
+  rpc-port:
+    description: "JSON-RPC port."
+    required: false
+    default: "8899"
+  api-port:
+    description: "REST API port."
+    required: false
+    default: "9000"
+  name:
+    description: "Stagenet name."
+    required: false
+    default: "ci"
+  run:
+    description: "Command to run against the stagenet. Its exit code becomes the action's result."
+    required: true
+
+outputs:
+  rpc-url:
+    description: "The stagenet JSON-RPC URL."
+    value: ${{ steps.boot.outputs.rpc-url }}
+  api-url:
+    description: "The stagenet REST API URL."
+    value: ${{ steps.boot.outputs.api-url }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Build RustAG CLI
+      shell: bash
+      run: cargo build --release -p rustag-cli
+
+    - name: Boot ephemeral stagenet
+      id: boot
+      shell: bash
+      env:
+        RUSTAG_MAINNET_RPC: ${{ inputs.mainnet-rpc }}
+        IN_NAME: ${{ inputs.name }}
+        IN_RPC: ${{ inputs.rpc-port }}
+        IN_API: ${{ inputs.api-port }}
+        IN_PRELOAD: ${{ inputs.preload }}
+        IN_MAINNET: ${{ inputs.mainnet-rpc }}
+      run: |
+        set -euo pipefail
+        BIN="$GITHUB_WORKSPACE/target/release/rustag"
+        WORKDIR="$RUNNER_TEMP/rustag-$IN_NAME"
+        mkdir -p "$WORKDIR"
+        cd "$WORKDIR"
+
+        CREATE_ARGS=(create "$IN_NAME" --rpc-port "$IN_RPC" --api-port "$IN_API")
+        if [ -z "$IN_MAINNET" ]; then CREATE_ARGS+=(--no-mirror); fi
+        "$BIN" "${CREATE_ARGS[@]}"
+
+        START_ARGS=(start "$IN_NAME")
+        if [ -n "$IN_PRELOAD" ]; then START_ARGS+=(--preload $IN_PRELOAD); fi
+        nohup "$BIN" "${START_ARGS[@]}" > "$WORKDIR/stagenet.log" 2>&1 &
+        echo $! > "$WORKDIR/stagenet.pid"
+
+        {
+          echo "workdir=$WORKDIR"
+          echo "rpc-url=http://127.0.0.1:$IN_RPC"
+          echo "api-url=http://127.0.0.1:$IN_API"
+        } >> "$GITHUB_OUTPUT"
+
+        echo "Waiting for the stagenet to become healthy..."
+        for _ in $(seq 1 80); do
+          if curl -sf "http://127.0.0.1:$IN_API/api/health" >/dev/null 2>&1; then
+            echo "Stagenet is healthy."
+            exit 0
+          fi
+          sleep 0.5
+        done
+        echo "::error::stagenet did not become healthy in time"
+        cat "$WORKDIR/stagenet.log" || true
+        exit 1
+
+    - name: Run tests against the stagenet
+      id: tests
+      shell: bash
+      env:
+        RUSTAG_RPC_URL: ${{ steps.boot.outputs.rpc-url }}
+        RUSTAG_API_URL: ${{ steps.boot.outputs.api-url }}
+        ANCHOR_PROVIDER_URL: ${{ steps.boot.outputs.rpc-url }}
+        RUN_CMD: ${{ inputs.run }}
+      run: |
+        set +e
+        bash -c "$RUN_CMD"
+        echo "exit-code=$?" >> "$GITHUB_OUTPUT"
+
+    - name: Report results and tear down
+      if: always()
+      shell: bash
+      env:
+        WORKDIR: ${{ steps.boot.outputs.workdir }}
+        RPC_URL: ${{ steps.boot.outputs.rpc-url }}
+        CODE: ${{ steps.tests.outputs.exit-code }}
+      run: |
+        {
+          echo "### 🧪 RustAG stagenet"
+          echo ""
+          echo "- **RPC:** \`$RPC_URL\`"
+          if [ "${CODE:-1}" = "0" ]; then
+            echo "- **Result:** ✅ passed"
+          else
+            echo "- **Result:** ❌ failed (exit ${CODE:-1})"
+          fi
+        } >> "$GITHUB_STEP_SUMMARY"
+        if [ -n "${WORKDIR:-}" ] && [ -f "$WORKDIR/stagenet.pid" ]; then
+          kill "$(cat "$WORKDIR/stagenet.pid")" 2>/dev/null || true
+        fi
+        exit "${CODE:-1}"

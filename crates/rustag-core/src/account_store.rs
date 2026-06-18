@@ -14,6 +14,7 @@ use uuid::Uuid;
 
 use crate::account_state::{AccountEntry, AccountSync};
 use crate::error::{Result, RustagError};
+use crate::metrics::MetricPoint;
 use rustag_mirror::AccountCategory;
 
 /// Embedded migrations (compiled in at build time from `/migrations`).
@@ -45,6 +46,27 @@ pub struct TransactionRecord {
     pub programs: Vec<String>,
     pub logs: Vec<String>,
     pub err: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+/// A persisted Activity Scheduler entry (powers `rustag schedule` and the
+/// background [`crate`] scheduler loop). `action_json` is an opaque, serialized
+/// scheduler action — `rustag-core` stores and returns it verbatim and never
+/// interprets it, so the scheduler crate owns the action schema.
+#[derive(Debug, Clone)]
+pub struct ScheduleRecord {
+    pub id: Uuid,
+    pub stagenet_id: Uuid,
+    pub name: String,
+    /// Schedule expression: `@every <dur>` or a 5-field cron string.
+    pub schedule: String,
+    /// Serialized scheduler action (opaque to the store).
+    pub action_json: String,
+    pub enabled: bool,
+    pub run_count: i64,
+    pub last_run: Option<DateTime<Utc>>,
+    pub last_status: Option<String>,
+    pub last_signature: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -361,6 +383,195 @@ impl AccountStore {
             .await?;
         Ok(row.try_get::<i64, _>("n")?)
     }
+
+    /// Sum of lamports across every account in a stagenet (the TVL proxy).
+    ///
+    /// Uses SQLite `TOTAL()` (always REAL) rather than `SUM()` (INTEGER) because
+    /// unlimited airdrops can push the aggregate past `i64::MAX`, which would
+    /// overflow/flip-sign an integer sum.
+    pub async fn sum_account_lamports(&self, stagenet_id: &Uuid) -> Result<f64> {
+        let row =
+            sqlx::query("SELECT TOTAL(lamports) AS total FROM accounts WHERE stagenet_id = ?")
+                .bind(stagenet_id.to_string())
+                .fetch_one(&self.pool)
+                .await?;
+        Ok(row.try_get::<f64, _>("total")?)
+    }
+
+    // --- schedules (Activity Scheduler) ---------------------------------
+
+    /// Insert or update a schedule.
+    pub async fn upsert_schedule(&self, rec: &ScheduleRecord) -> Result<()> {
+        sqlx::query(
+            "INSERT INTO schedules
+                (id, stagenet_id, name, schedule, action_json, enabled,
+                 run_count, last_run, last_status, last_signature, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(id) DO UPDATE SET
+                name = excluded.name,
+                schedule = excluded.schedule,
+                action_json = excluded.action_json,
+                enabled = excluded.enabled,
+                run_count = excluded.run_count,
+                last_run = excluded.last_run,
+                last_status = excluded.last_status,
+                last_signature = excluded.last_signature",
+        )
+        .bind(rec.id.to_string())
+        .bind(rec.stagenet_id.to_string())
+        .bind(&rec.name)
+        .bind(&rec.schedule)
+        .bind(&rec.action_json)
+        .bind(rec.enabled as i64)
+        .bind(rec.run_count)
+        .bind(rec.last_run.map(|t| t.to_rfc3339()))
+        .bind(rec.last_status.as_deref())
+        .bind(rec.last_signature.as_deref())
+        .bind(rec.created_at.to_rfc3339())
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    /// List schedules for a stagenet (newest first); optionally only enabled.
+    pub async fn list_schedules(
+        &self,
+        stagenet_id: &Uuid,
+        only_enabled: bool,
+    ) -> Result<Vec<ScheduleRecord>> {
+        let sql = if only_enabled {
+            "SELECT * FROM schedules WHERE stagenet_id = ? AND enabled = 1 ORDER BY created_at DESC"
+        } else {
+            "SELECT * FROM schedules WHERE stagenet_id = ? ORDER BY created_at DESC"
+        };
+        let rows = sqlx::query(sql)
+            .bind(stagenet_id.to_string())
+            .fetch_all(&self.pool)
+            .await?;
+        rows.into_iter().map(parse_schedule_row).collect()
+    }
+
+    /// Look up a schedule by id.
+    pub async fn get_schedule(&self, id: &Uuid) -> Result<Option<ScheduleRecord>> {
+        let row = sqlx::query("SELECT * FROM schedules WHERE id = ?")
+            .bind(id.to_string())
+            .fetch_optional(&self.pool)
+            .await?;
+        row.map(parse_schedule_row).transpose()
+    }
+
+    /// Delete a schedule. Returns whether a row was removed.
+    pub async fn delete_schedule(&self, id: &Uuid) -> Result<bool> {
+        let res = sqlx::query("DELETE FROM schedules WHERE id = ?")
+            .bind(id.to_string())
+            .execute(&self.pool)
+            .await?;
+        Ok(res.rows_affected() > 0)
+    }
+
+    /// Enable or disable a schedule.
+    pub async fn set_schedule_enabled(&self, id: &Uuid, enabled: bool) -> Result<()> {
+        sqlx::query("UPDATE schedules SET enabled = ? WHERE id = ?")
+            .bind(enabled as i64)
+            .bind(id.to_string())
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    /// Record the outcome of a schedule firing: bump `run_count`, stamp
+    /// `last_run`, and store the status + resulting signature.
+    pub async fn record_schedule_run(
+        &self,
+        id: &Uuid,
+        status: &str,
+        signature: Option<&str>,
+    ) -> Result<()> {
+        sqlx::query(
+            "UPDATE schedules
+                SET run_count = run_count + 1,
+                    last_run = ?,
+                    last_status = ?,
+                    last_signature = ?
+             WHERE id = ?",
+        )
+        .bind(Utc::now().to_rfc3339())
+        .bind(status)
+        .bind(signature)
+        .bind(id.to_string())
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    // --- metrics (Analytics time-series) --------------------------------
+
+    /// Insert a batch of metric points (one transaction per call).
+    pub async fn insert_metrics(&self, stagenet_id: &Uuid, points: &[MetricPoint]) -> Result<()> {
+        if points.is_empty() {
+            return Ok(());
+        }
+        let mut tx = self.pool.begin().await?;
+        for p in points {
+            sqlx::query(
+                "INSERT INTO metrics (stagenet_id, series, value, recorded_at)
+                 VALUES (?, ?, ?, ?)",
+            )
+            .bind(stagenet_id.to_string())
+            .bind(&p.series)
+            .bind(p.value)
+            .bind(p.recorded_at.to_rfc3339())
+            .execute(&mut *tx)
+            .await?;
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+
+    /// Read a series' points (oldest → newest), capped at `limit` most-recent.
+    pub async fn query_metrics(
+        &self,
+        stagenet_id: &Uuid,
+        series: &str,
+        limit: i64,
+    ) -> Result<Vec<MetricPoint>> {
+        // Take the newest `limit`, then reverse to chronological order for charts.
+        let rows = sqlx::query(
+            "SELECT series, value, recorded_at FROM metrics
+             WHERE stagenet_id = ? AND series = ?
+             ORDER BY recorded_at DESC LIMIT ?",
+        )
+        .bind(stagenet_id.to_string())
+        .bind(series)
+        .bind(limit.clamp(1, 100_000))
+        .fetch_all(&self.pool)
+        .await?;
+        let mut points: Vec<MetricPoint> = rows
+            .into_iter()
+            .map(parse_metric_row)
+            .collect::<Result<_>>()?;
+        points.reverse();
+        Ok(points)
+    }
+
+    /// Prune the oldest metric points, keeping the newest `keep_rows` for this
+    /// stagenet (a simple bounded retention so the table never grows unbounded).
+    pub async fn prune_metrics(&self, stagenet_id: &Uuid, keep_rows: i64) -> Result<u64> {
+        let res = sqlx::query(
+            "DELETE FROM metrics
+             WHERE stagenet_id = ?
+               AND rowid NOT IN (
+                 SELECT rowid FROM metrics WHERE stagenet_id = ?
+                 ORDER BY recorded_at DESC LIMIT ?
+               )",
+        )
+        .bind(stagenet_id.to_string())
+        .bind(stagenet_id.to_string())
+        .bind(keep_rows.max(0))
+        .execute(&self.pool)
+        .await?;
+        Ok(res.rows_affected())
+    }
 }
 
 // --- row -> domain mapping --------------------------------------------------
@@ -443,6 +654,34 @@ fn parse_transaction_row(row: sqlx::sqlite::SqliteRow) -> Result<TransactionReco
         logs,
         err: row.try_get("err")?,
         created_at: parse_ts(row.try_get("created_at")?).unwrap_or_else(Utc::now),
+    })
+}
+
+fn parse_schedule_row(row: sqlx::sqlite::SqliteRow) -> Result<ScheduleRecord> {
+    let id = Uuid::parse_str(&row.try_get::<String, _>("id")?)
+        .map_err(|e| RustagError::Serialization(e.to_string()))?;
+    let stagenet_id = Uuid::parse_str(&row.try_get::<String, _>("stagenet_id")?)
+        .map_err(|e| RustagError::Serialization(e.to_string()))?;
+    Ok(ScheduleRecord {
+        id,
+        stagenet_id,
+        name: row.try_get("name")?,
+        schedule: row.try_get("schedule")?,
+        action_json: row.try_get("action_json")?,
+        enabled: row.try_get::<i64, _>("enabled")? != 0,
+        run_count: row.try_get::<i64, _>("run_count")?,
+        last_run: parse_ts(row.try_get("last_run")?),
+        last_status: row.try_get("last_status")?,
+        last_signature: row.try_get("last_signature")?,
+        created_at: parse_ts(row.try_get("created_at")?).unwrap_or_else(Utc::now),
+    })
+}
+
+fn parse_metric_row(row: sqlx::sqlite::SqliteRow) -> Result<MetricPoint> {
+    Ok(MetricPoint {
+        series: row.try_get("series")?,
+        value: row.try_get::<f64, _>("value")?,
+        recorded_at: parse_ts(row.try_get("recorded_at")?).unwrap_or_else(Utc::now),
     })
 }
 

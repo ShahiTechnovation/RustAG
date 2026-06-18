@@ -16,15 +16,21 @@ mod account_state;
 mod account_store;
 mod config;
 mod error;
+pub mod metrics;
+mod realtime;
 mod stagenet;
 mod sync;
 
 pub use account_state::{AccountEntry, AccountSync};
-pub use account_store::{AccountStore, StagenetRecord, TransactionRecord};
+pub use account_store::{AccountStore, ScheduleRecord, StagenetRecord, TransactionRecord};
 pub use config::{StagenetConfig, DEFAULT_MAINNET_RPC};
 pub use error::{Result, RustagError};
+pub use metrics::{MetricPoint, MetricsSnapshot};
+pub use realtime::spawn_realtime_apply;
 pub use stagenet::{AccountOverride, Stagenet, TxOutcome};
-pub use sync::spawn_oracle_sync;
+pub use sync::{spawn_metrics_sampler, spawn_oracle_sync};
 
 // Re-export the mirror surface so downstream crates have a single dependency.
+#[cfg(feature = "realtime")]
+pub use rustag_mirror::RealtimeMirror;
 pub use rustag_mirror::{registry, AccountCategory, MainnetMirror, MirrorError, RemoteAccount};
