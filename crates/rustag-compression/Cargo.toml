@@ -1,0 +1,20 @@
+[package]
+name = "rustag-compression"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Off-chain concurrent Merkle tree simulator (spl-account-compression compatible) for testing compressed-state Solana programs"
+keywords = ["solana", "compression", "merkle", "keccak", "testing"]
+categories = ["development-tools", "cryptography"]
+
+[dependencies]
+# Keccak-256 to match spl-account-compression's on-chain node hashing exactly,
+# so off-chain roots and proofs computed here verify against on-chain trees.
+sha3 = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }

@@ -3152,20 +3152,47 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustag-attest"
+version = "0.1.0"
+dependencies = [
+ "bs58",
+ "chrono",
+ "hex",
+ "rustag-core",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "solana-keypair",
+ "solana-pubkey 4.2.0",
+ "solana-signature",
+ "solana-signer",
+ "thiserror 2.0.18",
+ "uuid",
+]
+
+[[package]]
 name = "rustag-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bs58",
  "chrono",
  "clap",
  "console",
+ "hex",
  "indicatif",
  "reqwest",
+ "rustag-attest",
+ "rustag-compression",
  "rustag-core",
  "rustag-rpc",
+ "rustag-sim",
  "serde",
  "serde_json",
+ "solana-keypair",
  "solana-pubkey 4.2.0",
+ "solana-signature",
+ "solana-signer",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -3194,6 +3221,16 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+]
+
+[[package]]
+name = "rustag-compression"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sha3",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -3247,6 +3284,30 @@ dependencies = [
  "tokio",
  "tokio-tungstenite 0.24.0",
  "tracing",
+]
+
+[[package]]
+name = "rustag-replay"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "bincode",
+ "chrono",
+ "hex",
+ "rustag-attest",
+ "rustag-core",
+ "serde",
+ "serde_json",
+ "solana-hash 3.1.0",
+ "solana-keypair",
+ "solana-message",
+ "solana-pubkey 4.2.0",
+ "solana-signer",
+ "solana-system-interface 3.2.0",
+ "solana-transaction",
+ "thiserror 2.0.18",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]
@@ -3308,12 +3369,16 @@ dependencies = [
 name = "rustag-sim"
 version = "0.1.0"
 dependencies = [
+ "hex",
+ "rustag-attest",
  "rustag-core",
  "serde",
  "serde_json",
+ "solana-hash 3.1.0",
  "solana-keypair",
  "solana-message",
  "solana-pubkey 4.2.0",
+ "solana-signature",
  "solana-signer",
  "solana-system-interface 3.2.0",
  "solana-transaction",
@@ -5578,6 +5643,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tracing-serde"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "704b1aeb7be0d0a84fc9828cae51dab5970fee5088f83d1dd7ee6f6246fc6ff1"
+dependencies = [
+ "serde",
+ "tracing-core",
+]
+
+[[package]]
 name = "tracing-subscriber"
 version = "0.3.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5587,12 +5662,15 @@ dependencies = [
  "nu-ansi-term",
  "once_cell",
  "regex-automata",
+ "serde",
+ "serde_json",
  "sharded-slab",
  "smallvec",
  "thread_local",
  "tracing",
  "tracing-core",
  "tracing-log",
+ "tracing-serde",
 ]
 
 [[package]]
