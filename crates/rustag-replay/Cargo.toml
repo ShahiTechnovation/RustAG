@@ -1,0 +1,36 @@
+[package]
+name = "rustag-replay"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Time-travel debugging, deterministic replay, and branching (fork-of-fork) lineage for RustAG stagenets"
+keywords = ["solana", "replay", "debugging", "snapshot", "testing"]
+categories = ["development-tools", "simulation"]
+
+[dependencies]
+rustag-core = { workspace = true }
+rustag-attest = { workspace = true }   # canonical state-root hashing (single source of truth)
+
+solana-transaction = { workspace = true }
+
+bincode = { workspace = true }         # canonical VersionedTransaction wire encoding
+base64 = { workspace = true }          # journal stores transactions as base64 text
+hex = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
+solana-keypair = { workspace = true }
+solana-message = { workspace = true }
+solana-signer = { workspace = true }
+solana-system-interface = { workspace = true }
+solana-pubkey = { workspace = true }
+solana-hash = { workspace = true }

@@ -1,23 +1,31 @@
 //! CLI command implementations and shared helpers.
 
 pub mod airdrop;
+pub mod attest;
 pub mod create;
+pub mod doctor;
 pub mod logs;
 pub mod manage;
 pub mod metrics;
 pub mod overrides;
 pub mod preload;
+pub mod scan;
 pub mod schedule;
 pub mod start;
+pub mod tree;
+pub mod verify;
 
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use console::style;
 use uuid::Uuid;
 
-use rustag_core::{AccountStore, StagenetConfig, StagenetRecord};
+use rustag_core::{
+    AccountEntry, AccountStore, StagenetConfig, StagenetRecord, TransactionRecord, TxOutcome,
+};
+use solana_signature::Signature;
 
 /// The project-local data directory (`./.rustag`).
 pub fn data_dir() -> PathBuf {
@@ -92,11 +100,82 @@ pub fn warn(msg: impl AsRef<str>) {
     println!("  {} {}", style("!").yellow().bold(), msg.as_ref());
 }
 
+pub fn fail(msg: impl AsRef<str>) {
+    println!("  {} {}", style("✗").red().bold(), msg.as_ref());
+}
+
 /// Friendly "is the stagenet running?" error for client commands.
 pub fn connection_hint(name: &str) -> anyhow::Error {
     anyhow::anyhow!(
         "could not reach the stagenet's REST API — is it running? Start it with `rustag start {name}`"
     )
+}
+
+/// Reduce a URL to just `scheme://host[:port]` before it lands in a shareable
+/// artifact. RPC endpoints embed API keys either in the query (`?api-key=...`)
+/// *or* in the path (`/v2/<KEY>`, `/<KEY>`), so dropping only the query is not
+/// enough — we drop the path too and keep only the authority.
+pub fn redact_url(url: &str) -> String {
+    if let Some((scheme, rest)) = url.split_once("://") {
+        let authority = rest.split(['/', '?', '#']).next().unwrap_or(rest);
+        if !authority.is_empty() {
+            return format!("{scheme}://{authority}");
+        }
+    }
+    // Non-URL input: at minimum strip any query string.
+    match url.split_once('?') {
+        Some((base, _)) => format!("{base}?<redacted>"),
+        None => url.to_string(),
+    }
+}
+
+/// Load every persisted account for a stagenet (paginated read from the store).
+pub async fn load_all_accounts(store: &AccountStore, id: &Uuid) -> Result<Vec<AccountEntry>> {
+    let mut out = Vec::new();
+    let mut offset = 0i64;
+    const PAGE: i64 = 1000;
+    loop {
+        let batch = store.list_accounts(id, PAGE, offset).await?;
+        let n = batch.len();
+        out.extend(batch);
+        offset += n as i64;
+        if (n as i64) < PAGE {
+            break;
+        }
+    }
+    Ok(out)
+}
+
+/// Reconstruct a [`TxOutcome`] from a persisted transaction record.
+pub fn record_to_outcome(rec: &TransactionRecord) -> Result<TxOutcome> {
+    let bytes = bs58::decode(&rec.signature).into_vec().map_err(|_| {
+        anyhow!(
+            "transaction record has an invalid signature: {}",
+            rec.signature
+        )
+    })?;
+    let signature = Signature::try_from(bytes.as_slice()).map_err(|_| {
+        anyhow!(
+            "transaction record signature is not 64 bytes: {}",
+            rec.signature
+        )
+    })?;
+    Ok(TxOutcome {
+        signature,
+        success: rec.success,
+        err: rec.err.clone(),
+        compute_units: rec.compute_units.unwrap_or(0),
+        fee: rec.fee,
+        logs: rec.logs.clone(),
+    })
+}
+
+/// Load recorded transaction outcomes for a stagenet, oldest-first (the order
+/// they were applied), capped at `limit`.
+pub async fn load_outcomes(store: &AccountStore, id: &Uuid, limit: i64) -> Result<Vec<TxOutcome>> {
+    let mut recs = store.list_transactions(id, limit).await?;
+    recs.reverse(); // store returns newest-first; replay/commit order is oldest-first
+    recs.iter().map(record_to_outcome).collect()
 }
 
 /// Probe a stagenet's REST health endpoint to detect whether it is running.
@@ -113,4 +192,39 @@ pub async fn is_running(config: &StagenetConfig) -> bool {
         .await
         .map(|r| r.status().is_success())
         .unwrap_or(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::redact_url;
+
+    #[test]
+    fn redacts_query_string_api_keys() {
+        assert_eq!(
+            redact_url("https://mainnet.helius-rpc.com/?api-key=secret123"),
+            "https://mainnet.helius-rpc.com"
+        );
+    }
+
+    #[test]
+    fn redacts_path_embedded_api_keys() {
+        // Alchemy-style keys live in the path, not the query.
+        assert_eq!(
+            redact_url("https://solana-mainnet.g.alchemy.com/v2/SECRET_KEY"),
+            "https://solana-mainnet.g.alchemy.com"
+        );
+        assert_eq!(
+            redact_url("https://rpc.example.com/SECRET_KEY"),
+            "https://rpc.example.com"
+        );
+    }
+
+    #[test]
+    fn preserves_keyless_host_and_port() {
+        assert_eq!(
+            redact_url("https://api.mainnet-beta.solana.com"),
+            "https://api.mainnet-beta.solana.com"
+        );
+        assert_eq!(redact_url("http://127.0.0.1:8899"), "http://127.0.0.1:8899");
+    }
 }

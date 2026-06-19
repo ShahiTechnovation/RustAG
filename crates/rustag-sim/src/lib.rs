@@ -25,10 +25,24 @@
 //! # Ok(()) }
 //! ```
 
+mod bundle;
+mod diff;
 mod error;
+mod exploit;
+mod fuzz;
 mod report;
 mod scenario;
 
+pub use bundle::{
+    default_tip_accounts, land_bundle, simulate_bundle, simulate_bundle_with_tips, BundleReport,
+    JITO_TIP_ACCOUNTS,
+};
+pub use diff::{differential, Divergence, DivergenceReport};
 pub use error::{Result, SimError};
+pub use exploit::{scan_outcomes, Finding, ScanReport, Severity};
+pub use fuzz::{
+    balance_floor, fuzz, owner_unchanged, FuzzObservation, FuzzReport, FuzzRng, Invariant,
+    Violation,
+};
 pub use report::{ComparisonReport, ScenarioReport, TxResult};
 pub use scenario::{compare, fork_and_replay, replay, stress};

@@ -10,6 +10,7 @@ description = "RustAG simulation framework: fork a stagenet, replay/stress trans
 
 [dependencies]
 rustag-core.workspace = true
+rustag-attest.workspace = true   # canonical state-root hashing for bundle/diff reports
 
 solana-transaction.workspace = true
 solana-pubkey.workspace = true
@@ -19,9 +20,12 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
+hex.workspace = true
 
 [dev-dependencies]
 solana-keypair.workspace = true
 solana-signer.workspace = true
 solana-message.workspace = true
 solana-system-interface.workspace = true
+solana-hash.workspace = true
+solana-signature.workspace = true
