@@ -22,4 +22,8 @@ pub enum MirrorError {
     /// Account `data` could not be decoded from its wire encoding.
     #[error("failed to decode account data: {0}")]
     Decode(String),
+
+    /// The real-time WebSocket transport failed (connect, send, or stream).
+    #[error("realtime websocket error: {0}")]
+    WebSocket(String),
 }

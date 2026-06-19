@@ -19,6 +19,14 @@ release:
 dev *ARGS:
     cargo run -p rustag-cli -- {{ARGS}}
 
+# Build the `rustag` binary with the real-time push mirror feature.
+release-realtime:
+    cargo build -p rustag-cli --release --features realtime
+
+# Run the cloud control plane (env-configured; see .env.example).
+cloud:
+    cargo run -p rustag-cloud -- serve
+
 # Run all tests. Skips network/mainnet tests by default (see `test-all`).
 test:
     cargo test --workspace

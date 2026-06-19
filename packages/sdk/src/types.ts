@@ -70,3 +70,67 @@ export interface RustagClientOptions {
   /** Optional custom fetch implementation. */
   fetch?: typeof fetch;
 }
+
+// --- Phase 2: Activity Scheduler -------------------------------------------
+
+/** What a scheduled activity does when it fires. */
+export type ScheduleAction =
+  | { type: "airdrop"; pubkey: string; sol: number }
+  | { type: "transfer"; secret_key: string; to: string; sol: number }
+  | { type: "raw_transaction"; transaction_base64: string };
+
+/** A recurring on-chain activity. */
+export interface Schedule {
+  id: string;
+  name: string;
+  /** `@every 30s`, `@hourly`, or a 5-field cron expression. */
+  schedule: string;
+  action: ScheduleAction;
+  enabled: boolean;
+  runCount: number;
+  lastRun: string | null;
+  lastStatus: string | null;
+  lastSignature: string | null;
+  createdAt: string;
+}
+
+export interface CreateScheduleParams {
+  name: string;
+  schedule: string;
+  action: ScheduleAction;
+}
+
+// --- Phase 2: Analytics ----------------------------------------------------
+
+/** A single time-series point: `t` is an ISO-8601 timestamp, `v` the value. */
+export interface MetricPoint {
+  t: string;
+  v: number;
+}
+
+/** Metrics keyed by series name (e.g. `tvl_lamports`, `transactions`). */
+export type Metrics = Record<string, MetricPoint[]>;
+
+// --- Phase 2: Simulation ---------------------------------------------------
+
+export interface SimTxResult {
+  index: number;
+  signature: string;
+  success: boolean;
+  err: string | null;
+  computeUnits: number;
+  fee: number;
+}
+
+/** The result of replaying a set of transactions against a fork. */
+export interface ScenarioReport {
+  label: string;
+  total: number;
+  succeeded: number;
+  failed: number;
+  totalComputeUnits: number;
+  maxComputeUnits: number;
+  totalFees: number;
+  durationMs: number;
+  outcomes: SimTxResult[];
+}

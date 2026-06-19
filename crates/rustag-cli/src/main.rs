@@ -41,6 +41,10 @@ enum Command {
     Preload(commands::preload::PreloadArgs),
     /// Tail the transaction log.
     Logs(commands::logs::LogsArgs),
+    /// Manage recurring on-chain activities (Phase 2 scheduler).
+    Schedule(commands::schedule::ScheduleArgs),
+    /// Show analytics time-series for a stagenet (Phase 2).
+    Metrics(commands::metrics::MetricsArgs),
 }
 
 #[tokio::main]
@@ -57,6 +61,8 @@ async fn main() -> anyhow::Result<()> {
         Command::Override(args) => commands::overrides::run(args).await,
         Command::Preload(args) => commands::preload::run(args).await,
         Command::Logs(args) => commands::logs::run(args).await,
+        Command::Schedule(args) => commands::schedule::run(args).await,
+        Command::Metrics(args) => commands::metrics::run(args).await,
     }
 }
 

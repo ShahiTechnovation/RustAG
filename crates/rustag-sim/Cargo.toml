@@ -1,0 +1,27 @@
+[package]
+name = "rustag-sim"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "RustAG simulation framework: fork a stagenet, replay/stress transactions, compare outcomes"
+
+[dependencies]
+rustag-core.workspace = true
+
+solana-transaction.workspace = true
+solana-pubkey.workspace = true
+
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+solana-keypair.workspace = true
+solana-signer.workspace = true
+solana-message.workspace = true
+solana-system-interface.workspace = true

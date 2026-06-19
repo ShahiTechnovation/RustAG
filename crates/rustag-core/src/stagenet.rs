@@ -16,12 +16,13 @@ use solana_signature::Signature;
 use solana_transaction::versioned::VersionedTransaction;
 use uuid::Uuid;
 
-use rustag_mirror::{registry, AccountCategory, MainnetMirror};
+use rustag_mirror::{registry, AccountCategory, MainnetMirror, RemoteAccount};
 
 use crate::account_state::{AccountEntry, AccountSync};
 use crate::account_store::{AccountStore, StagenetRecord, TransactionRecord};
 use crate::config::StagenetConfig;
 use crate::error::{Result, RustagError};
+use crate::metrics::MetricsSnapshot;
 
 /// SPL token account `amount` field offset (mint[32] + owner[32]).
 const SPL_TOKEN_AMOUNT_OFFSET: usize = 64;
@@ -208,6 +209,87 @@ impl Stagenet {
     /// Number of locally-modified accounts.
     pub fn dirty_count(&self) -> usize {
         self.dirty_set.len()
+    }
+
+    // --- snapshot / fork (Phase 2 simulation framework) -----------------
+
+    /// Export every persisted account in this stagenet (a paginated read from
+    /// the store). The returned entries carry this stagenet's id;
+    /// [`import_accounts`](Self::import_accounts) re-homes them on load.
+    pub async fn export_accounts(&self) -> Result<Vec<AccountEntry>> {
+        let mut out = Vec::new();
+        let mut offset = 0i64;
+        const PAGE: i64 = 1000;
+        loop {
+            let batch = self.store.list_accounts(&self.id, PAGE, offset).await?;
+            let n = batch.len();
+            out.extend(batch);
+            offset += n as i64;
+            if (n as i64) < PAGE {
+                break;
+            }
+        }
+        Ok(out)
+    }
+
+    /// Load account entries into this stagenet, preserving each account's sync
+    /// state (dirty/pinned accounts stay frozen from mainnet sync). Entries are
+    /// re-homed to this stagenet's id so a snapshot from one stagenet can seed
+    /// another.
+    pub async fn import_accounts(&mut self, entries: &[AccountEntry]) -> Result<()> {
+        for entry in entries {
+            let mut e = entry.clone();
+            e.stagenet_id = self.id;
+            self.svm.set_account_no_checks(e.pubkey, e.to_shared_data());
+            if !e.is_syncable() {
+                self.dirty_set.insert(e.pubkey);
+            }
+            self.cache.insert(e.pubkey, e.clone()).await;
+            self.store.upsert_account(&e).await?;
+        }
+        Ok(())
+    }
+
+    /// Fork this stagenet into a fresh, **offline in-memory** copy carrying the
+    /// same account state. The fork has mirroring disabled and its own database,
+    /// so transactions run against it never touch mainnet or the original — the
+    /// basis of the simulation framework ("what if N users act at once?").
+    pub async fn fork(&self, name: &str) -> Result<Stagenet> {
+        let snapshot = self.export_accounts().await?;
+        let mut fork = Stagenet::local(name).await?;
+        fork.import_accounts(&snapshot).await?;
+        fork.slot = self.slot;
+        Ok(fork)
+    }
+
+    /// Apply a streamed mainnet account update from the real-time mirror.
+    /// Returns `true` if applied, `false` if skipped because the account is
+    /// locally modified (dirty or pinned — both live in the dirty-set).
+    pub async fn apply_realtime_update(&mut self, remote: RemoteAccount) -> Result<bool> {
+        if self.dirty_set.contains(&remote.pubkey) {
+            return Ok(false);
+        }
+        let category = registry::categorize(&remote.pubkey);
+        let entry = AccountEntry::from_remote(remote, self.id, category);
+        self.load_clean(entry).await?;
+        Ok(true)
+    }
+
+    // --- analytics ------------------------------------------------------
+
+    /// Capture a point-in-time analytics snapshot of stagenet-level gauges.
+    pub async fn collect_metrics(&self) -> Result<MetricsSnapshot> {
+        let accounts = self.store.count_accounts(&self.id).await?;
+        let transactions = self.store.count_transactions(&self.id).await?;
+        let tvl_lamports = self.store.sum_account_lamports(&self.id).await?;
+        Ok(MetricsSnapshot {
+            accounts,
+            transactions,
+            dirty_accounts: self.dirty_set.len() as i64,
+            slot: self.slot,
+            tvl_lamports,
+            recorded_at: chrono::Utc::now(),
+        })
     }
 
     // --- the lazy mirror ------------------------------------------------

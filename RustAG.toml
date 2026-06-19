@@ -36,3 +36,21 @@ cors_origins = ["http://localhost:3000"]
 db_path = ".rustag/db.sqlite"
 # Phase 2: Postgres (uncomment and set DATABASE_URL).
 # database_url = "${DATABASE_URL}"
+
+# --- Phase 2 ---------------------------------------------------------------
+
+[realtime]
+# Push updates over the `accountSubscribe` WebSocket instead of only polling.
+# Requires building with `--features realtime`.
+enabled = false
+ws = "${RUSTAG_REALTIME_WS}"
+
+[scheduler]
+# Run the Activity Scheduler loop on startup.
+enabled = true
+
+[analytics]
+# Capture time-series samples (TVL, tx volume, dirty count) on startup.
+enabled = true
+# Sampling interval (seconds).
+interval = 60

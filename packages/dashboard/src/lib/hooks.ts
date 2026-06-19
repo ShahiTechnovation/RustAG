@@ -61,3 +61,52 @@ export function usePreload() {
     onSuccess: invalidate,
   });
 }
+
+// --- Phase 2: analytics + scheduler ----------------------------------------
+
+export function useMetrics(limit = 60) {
+  return useQuery({
+    queryKey: ["metrics", limit],
+    queryFn: () => client.getMetrics({ limit }),
+    refetchInterval: 5000,
+  });
+}
+
+export function useSchedules() {
+  return useQuery({
+    queryKey: ["schedules"],
+    queryFn: () => client.listSchedules(),
+    refetchInterval: 3000,
+  });
+}
+
+function useInvalidateSchedules() {
+  const qc = useQueryClient();
+  return () => void qc.invalidateQueries({ queryKey: ["schedules"] });
+}
+
+export function useCreateSchedule() {
+  const invalidate = useInvalidateSchedules();
+  return useMutation({
+    mutationFn: (params: Parameters<typeof client.createSchedule>[0]) =>
+      client.createSchedule(params),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteSchedule() {
+  const invalidate = useInvalidateSchedules();
+  return useMutation({
+    mutationFn: (id: string) => client.deleteSchedule(id),
+    onSuccess: invalidate,
+  });
+}
+
+export function useToggleSchedule() {
+  const invalidate = useInvalidateSchedules();
+  return useMutation({
+    mutationFn: (vars: { id: string; enabled: boolean }) =>
+      client.toggleSchedule(vars.id, vars.enabled),
+    onSuccess: invalidate,
+  });
+}

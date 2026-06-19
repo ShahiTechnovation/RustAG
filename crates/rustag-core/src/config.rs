@@ -39,6 +39,33 @@ pub struct StagenetConfig {
     pub db_path: String,
     /// CORS origins allowed to call the REST API.
     pub cors_origins: Vec<String>,
+
+    // --- Phase 2 ---------------------------------------------------------
+    /// Enable the real-time push mirror (Yellowstone gRPC / `accountSubscribe`
+    /// WebSocket) instead of relying solely on the 30s polling loop.
+    #[serde(default)]
+    pub realtime_enabled: bool,
+    /// Mainnet WebSocket endpoint for the real-time mirror (e.g. a Helius
+    /// `wss://...` URL). Required when `realtime_enabled` is true.
+    #[serde(default)]
+    pub realtime_ws: Option<String>,
+    /// Run the Activity Scheduler background loop on startup.
+    #[serde(default = "default_true")]
+    pub scheduler_enabled: bool,
+    /// Capture analytics metric samples on startup.
+    #[serde(default = "default_true")]
+    pub metrics_enabled: bool,
+    /// How often the analytics sampler captures a snapshot (seconds).
+    #[serde(default = "default_metrics_interval")]
+    pub metrics_interval: u64,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+fn default_metrics_interval() -> u64 {
+    60
 }
 
 impl Default for StagenetConfig {
@@ -59,6 +86,11 @@ impl Default for StagenetConfig {
             preload: Vec::new(),
             db_path: ".rustag/db.sqlite".to_string(),
             cors_origins: vec!["http://localhost:3000".to_string()],
+            realtime_enabled: false,
+            realtime_ws: None,
+            scheduler_enabled: true,
+            metrics_enabled: true,
+            metrics_interval: 60,
         }
     }
 }

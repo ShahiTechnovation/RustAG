@@ -1,9 +1,13 @@
 import type {
   AccountInfo,
   AirdropResult,
+  CreateScheduleParams,
+  Metrics,
   OverrideParams,
   PreloadResult,
   RustagClientOptions,
+  ScenarioReport,
+  Schedule,
   StagenetInfo,
   TransactionInfo,
 } from "./types";
@@ -106,6 +110,66 @@ export class RustagClient {
     return this.request("/api/preload", {
       method: "POST",
       body: JSON.stringify({ programs }),
+    });
+  }
+
+  // --- Phase 2: Activity Scheduler -----------------------------------------
+
+  /** List all recurring activities. */
+  async listSchedules(): Promise<Schedule[]> {
+    const data = await this.request<{ schedules: Schedule[] }>("/api/schedules");
+    return data.schedules;
+  }
+
+  /** Create a recurring activity (interval or cron). */
+  async createSchedule(params: CreateScheduleParams): Promise<Schedule> {
+    return this.request("/api/schedules", {
+      method: "POST",
+      body: JSON.stringify(params),
+    });
+  }
+
+  /** Remove an activity by id. */
+  async deleteSchedule(id: string): Promise<{ ok: boolean }> {
+    return this.request(`/api/schedules/${id}`, { method: "DELETE" });
+  }
+
+  /** Enable or disable an activity. */
+  async toggleSchedule(id: string, enabled: boolean): Promise<{ ok: boolean; enabled: boolean }> {
+    return this.request(`/api/schedules/${id}/toggle`, {
+      method: "POST",
+      body: JSON.stringify({ enabled }),
+    });
+  }
+
+  // --- Phase 2: Analytics --------------------------------------------------
+
+  /** Fetch analytics time-series. Pass a `series` to restrict to one. */
+  async getMetrics(params: { series?: string; limit?: number } = {}): Promise<Metrics> {
+    const query = new URLSearchParams();
+    if (params.series) query.set("series", params.series);
+    if (params.limit != null) query.set("limit", String(params.limit));
+    const suffix = query.toString() ? `?${query}` : "";
+    const data = await this.request<{ metrics: Metrics }>(`/api/metrics${suffix}`);
+    return data.metrics;
+  }
+
+  // --- Phase 2: Simulation -------------------------------------------------
+
+  /**
+   * Replay signed transactions against an isolated fork of the stagenet and
+   * return per-transaction outcomes plus aggregate statistics. The base
+   * stagenet is never mutated.
+   *
+   * @param transactions base64 (default) or base58 encoded signed transactions.
+   */
+  async simulate(
+    transactions: string[],
+    options: { label?: string; encoding?: "base64" | "base58" } = {},
+  ): Promise<ScenarioReport> {
+    return this.request("/api/simulate", {
+      method: "POST",
+      body: JSON.stringify({ transactions, label: options.label, encoding: options.encoding }),
     });
   }
 }

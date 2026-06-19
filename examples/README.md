@@ -25,6 +25,8 @@ Override with `RUSTAG_RPC_URL` / `RUSTAG_API_URL`.
 npm run pyth       # read the real SOL/USD Pyth price through the stagenet
 npm run raydium    # read a real Raydium AMM pool account (mirrored from mainnet)
 npm run jupiter    # airdrop + preload Jupiter + a confirmed transfer
+npm run simulate   # Phase 2: replay N transfers against an isolated fork
+npm run scheduler  # Phase 2: register a recurring airdrop, watch it fire, clean up
 ```
 
 Each script demonstrates that the lazy mirror surfaces **real mainnet state** locally,
