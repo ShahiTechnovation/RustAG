@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Archivo, Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
@@ -58,6 +59,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="min-h-screen bg-bg text-fg antialiased">
         <Providers>{children}</Providers>
         <Grain />
+        <Analytics />
       </body>
     </html>
   );
