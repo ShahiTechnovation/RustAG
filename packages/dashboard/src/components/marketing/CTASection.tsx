@@ -24,7 +24,7 @@ export function CTASection() {
                   className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
                 />
               </ButtonLink>
-              <ButtonLink href="https://github.com" external size="lg" variant="secondary">
+              <ButtonLink href="https://github.com/ShahiTechnovation/RustAG" external size="lg" variant="secondary">
                 View on GitHub
                 <ArrowUpRight size={18} />
               </ButtonLink>

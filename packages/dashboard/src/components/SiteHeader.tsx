@@ -51,7 +51,7 @@ export function SiteHeader() {
         </nav>
         <div className="flex items-center gap-2">
           <a
-            href="https://github.com"
+            href="https://github.com/ShahiTechnovation/RustAG"
             target="_blank"
             rel="noreferrer"
             className="hidden size-9 place-items-center rounded-[3px] text-muted transition-colors hover:text-fg sm:grid"

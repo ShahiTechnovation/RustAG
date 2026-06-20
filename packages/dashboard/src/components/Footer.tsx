@@ -26,8 +26,8 @@ const COLUMNS = [
     title: "Resources",
     links: [
       { label: "How it works", href: "#how-it-works" },
-      { label: "GitHub", href: "https://github.com" },
-      { label: "Docs", href: "https://github.com" },
+      { label: "GitHub", href: "https://github.com/ShahiTechnovation/RustAG" },
+      { label: "Docs", href: "https://github.com/ShahiTechnovation/RustAG" },
     ],
   },
 ];
@@ -43,7 +43,7 @@ export function Footer() {
             environment.
           </p>
           <a
-            href="https://github.com"
+            href="https://github.com/ShahiTechnovation/RustAG"
             target="_blank"
             rel="noreferrer"
             className="mt-4 inline-grid size-9 place-items-center rounded-[3px] border border-border text-muted transition-colors hover:border-brand hover:text-brand"
