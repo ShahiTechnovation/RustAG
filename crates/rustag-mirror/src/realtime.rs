@@ -3,14 +3,14 @@
 //! Phase 1 keeps CLEAN oracle accounts fresh by polling mainnet every 30s. This
 //! module is the Phase 2 *push* path: it opens a WebSocket to a mainnet RPC,
 //! `accountSubscribe`s to a set of pubkeys, and forwards every
-//! `accountNotification` as a [`RemoteAccount`] over an `mpsc` channel — the
+//! `accountNotification` as a [`RemoteAccount`] over an `mpsc` channel - the
 //! moment mainnet changes, the stagenet sees it (sub-second, not 30s).
 //!
 //! It speaks the *standard* Solana pub/sub protocol, which Geyser/Yellowstone-
 //! backed providers (Helius, Triton) serve, so one implementation points at any
 //! endpoint. A native Yellowstone gRPC source is a drop-in alternative: it would
-//! satisfy the exact same contract — produce [`RemoteAccount`]s into an
-//! `mpsc::Sender` — and `rustag_core::spawn_realtime_apply` consumes either.
+//! satisfy the exact same contract - produce [`RemoteAccount`]s into an
+//! `mpsc::Sender` - and `rustag_core::spawn_realtime_apply` consumes either.
 //!
 //! Enabled by the `realtime` cargo feature.
 
@@ -98,7 +98,7 @@ impl RealtimeMirror {
                     continue;
                 };
                 if let Some(remote) = decode_value(pubkey, &params["result"]["value"]) {
-                    // A dropped receiver means the consumer is gone — stop cleanly.
+                    // A dropped receiver means the consumer is gone - stop cleanly.
                     if updates.send(remote).await.is_err() {
                         break;
                     }

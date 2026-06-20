@@ -1,4 +1,4 @@
-//! `rustag airdrop` — credit SOL to a wallet via the running stagenet.
+//! `rustag airdrop` - credit SOL to a wallet via the running stagenet.
 
 use std::str::FromStr;
 

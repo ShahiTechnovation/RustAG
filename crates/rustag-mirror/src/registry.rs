@@ -1,7 +1,7 @@
 //! Registry of well-known mainnet programs and oracle price feeds.
 //!
 //! Every pubkey here was verified to exist on mainnet-beta at authoring time.
-//! Preloading these gives a stagenet real DeFi state without manual setup —
+//! Preloading these gives a stagenet real DeFi state without manual setup -
 //! the core value proposition of RustAG.
 
 use std::str::FromStr;

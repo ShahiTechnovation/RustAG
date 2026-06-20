@@ -33,10 +33,15 @@ export class RustagClient {
 
   constructor(options: RustagClientOptions = {}) {
     this.baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
-    this.fetchImpl = options.fetch ?? globalThis.fetch;
-    if (typeof this.fetchImpl !== "function") {
+    const resolvedFetch = options.fetch ?? globalThis.fetch;
+    if (typeof resolvedFetch !== "function") {
       throw new Error("No fetch implementation available; pass one via options.fetch");
     }
+    // The browser's native `fetch` throws "Illegal invocation" unless called with
+    // `this === window`. Calling `this.fetchImpl(...)` would rebind `this` to the
+    // client instance, so bind the default global fetch to the global object. A
+    // caller-supplied fetch is used as-is (it may legitimately rely on its own `this`).
+    this.fetchImpl = options.fetch ? resolvedFetch : resolvedFetch.bind(globalThis);
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {

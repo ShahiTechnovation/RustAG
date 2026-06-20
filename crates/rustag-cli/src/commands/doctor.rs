@@ -1,4 +1,4 @@
-//! `rustag doctor` — preflight diagnostics.
+//! `rustag doctor` - preflight diagnostics.
 //!
 //! Answers the "it doesn't work" questions before they become GitHub issues: is
 //! the data directory writable, is the database openable, is the configured
@@ -52,7 +52,7 @@ pub async fn run(args: DoctorArgs) -> Result<()> {
 
     if records.is_empty() {
         let cfg = StagenetConfig::default();
-        info("no stagenets registered — checking `rustag create` defaults");
+        info("no stagenets registered - checking `rustag create` defaults");
         failures += check_stagenet(&cfg).await;
     } else {
         for record in &records {
@@ -71,7 +71,7 @@ pub async fn run(args: DoctorArgs) -> Result<()> {
         ok("all checks passed");
         Ok(())
     } else {
-        bail!("{failures} check(s) failed — see above");
+        bail!("{failures} check(s) failed - see above");
     }
 }
 
@@ -137,7 +137,7 @@ async fn check_stagenet(cfg: &StagenetConfig) -> usize {
             failures += 1;
         }
     } else {
-        info("    mirror disabled — skipping mainnet RPC check");
+        info("    mirror disabled - skipping mainnet RPC check");
     }
 
     // Port availability. If the stagenet is running, its ports are *expected* to
@@ -163,7 +163,7 @@ async fn check_stagenet(cfg: &StagenetConfig) -> usize {
             ok(format!("    port {port} ({label}) free"));
         } else {
             fail(format!(
-                "    port {port} ({label}) is in use — `rustag start` would fail"
+                "    port {port} ({label}) is in use - `rustag start` would fail"
             ));
             failures += 1;
         }
@@ -193,7 +193,7 @@ async fn check_mainnet(rpc: &str) -> bool {
                 "    mainnet RPC returned {} (up but degraded?): {shown}",
                 resp.status()
             ));
-            // Up-but-degraded is not a hard failure — the host is reachable.
+            // Up-but-degraded is not a hard failure - the host is reachable.
             true
         }
         Err(e) => {
@@ -208,7 +208,7 @@ fn port_free(port: u16) -> bool {
     TcpListener::bind(("127.0.0.1", port)).is_ok()
 }
 
-/// Drop the query string from a URL before printing it — mainnet/WS endpoints
+/// Drop the query string from a URL before printing it - mainnet/WS endpoints
 /// carry `?api-key=...`, which must never reach logs or terminal output.
 fn redact_url(url: &str) -> String {
     match url.split_once('?') {
@@ -240,7 +240,7 @@ mod tests {
         // Held by `listener`, so it must read as not free.
         assert!(!port_free(port));
         drop(listener);
-        // Released — now bindable again.
+        // Released - now bindable again.
         assert!(port_free(port));
     }
 }

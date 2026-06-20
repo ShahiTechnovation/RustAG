@@ -110,7 +110,7 @@ pub async fn list() -> Result<()> {
     let store = open_store().await?;
     let records = store.list_stagenets().await?;
     if records.is_empty() {
-        info("no stagenets yet — run `rustag create <name>`");
+        info("no stagenets yet - run `rustag create <name>`");
         return Ok(());
     }
     println!();

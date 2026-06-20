@@ -1,4 +1,4 @@
-//! `rustag schedule` — manage recurring on-chain activities (Phase 2).
+//! `rustag schedule` - manage recurring on-chain activities (Phase 2).
 //!
 //! Talks to a running stagenet's REST API. An activity pairs a schedule
 //! expression (`@every 30s` or a 5-field cron) with an action (airdrop, signed
@@ -161,7 +161,7 @@ fn print_schedules(body: &Value) {
         return;
     };
     if schedules.is_empty() {
-        info("no activities — add one with `rustag schedule add`");
+        info("no activities - add one with `rustag schedule add`");
         return;
     }
     println!();
@@ -187,7 +187,7 @@ fn print_schedules(body: &Value) {
             ),
             s.get("enabled").and_then(|v| v.as_bool()).unwrap_or(false),
             s.get("runCount").and_then(|v| v.as_i64()).unwrap_or(0),
-            s.get("lastStatus").and_then(|v| v.as_str()).unwrap_or("—"),
+            s.get("lastStatus").and_then(|v| v.as_str()).unwrap_or("-"),
         );
     }
     println!();

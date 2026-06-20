@@ -4,7 +4,7 @@
 //! reproducible by a third party. Two rules make it so:
 //!
 //! 1. **Fixed-width, little-endian field encoding** with an explicit `data`
-//!    length prefix — no ambiguity, no padding, no platform-endianness leak.
+//!    length prefix - no ambiguity, no padding, no platform-endianness leak.
 //! 2. **Accounts are sorted by pubkey** before the tree is built, so the root
 //!    never depends on the order the accounts happened to be enumerated in.
 
@@ -120,7 +120,7 @@ mod tests {
 
     #[test]
     fn sync_state_does_not_affect_the_root() {
-        // The root commits to consensus-visible account fields only — not to our
+        // The root commits to consensus-visible account fields only - not to our
         // internal dirty/clean bookkeeping, which is not part of mainnet state.
         let mut a = entry(5, 100);
         let mut b = a.clone();

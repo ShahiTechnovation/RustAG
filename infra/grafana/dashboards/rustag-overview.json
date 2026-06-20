@@ -1,0 +1,82 @@
+{
+  "__comment": "RustAG cloud overview dashboard. Import into Grafana (Dashboards → Import). Assumes a Prometheus datasource named 'Prometheus' scraping the control plane's /metrics endpoint (a tracked gap: the app currently exposes /api/metrics JSON, not Prometheus exposition - see docs/known-gaps.md). Panels are written against the metric names the OTLP exporter will emit.",
+  "title": "RustAG Cloud - Overview",
+  "uid": "rustag-overview",
+  "schemaVersion": 39,
+  "editable": true,
+  "tags": ["rustag", "cloud"],
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "tenant",
+        "label": "Tenant",
+        "type": "query",
+        "datasource": "Prometheus",
+        "query": "label_values(rustag_stagenet_up, tenant_id)",
+        "includeAll": true,
+        "multi": true
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Active stagenets",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "targets": [
+        { "expr": "sum(rustag_stagenet_up{tenant_id=~\"$tenant\"})", "legendFormat": "running" }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Control-plane API request rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 6, "y": 0 },
+      "targets": [
+        { "expr": "sum by (route) (rate(rustag_http_requests_total[5m]))", "legendFormat": "{{route}}" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "getAccountInfo latency (p50/p99)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "ms" } },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum by (le) (rate(rustag_rpc_latency_ms_bucket{method=\"getAccountInfo\"}[5m])))", "legendFormat": "p50" },
+        { "expr": "histogram_quantile(0.99, sum by (le) (rate(rustag_rpc_latency_ms_bucket{method=\"getAccountInfo\"}[5m])))", "legendFormat": "p99" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Oracle staleness (push mirror)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [
+        { "expr": "histogram_quantile(0.99, sum by (le) (rate(rustag_oracle_staleness_seconds_bucket[5m])))", "legendFormat": "p99 staleness" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Mainnet fetches & errors",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "targets": [
+        { "expr": "sum(rate(rustag_mainnet_fetch_total[5m]))", "legendFormat": "fetches" },
+        { "expr": "sum(rate(rustag_mainnet_fetch_errors_total[5m]))", "legendFormat": "errors" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Yellowstone / realtime stream connected",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 16 },
+      "targets": [
+        { "expr": "min(rustag_realtime_stream_connected)", "legendFormat": "connected" }
+      ]
+    }
+  ]
+}

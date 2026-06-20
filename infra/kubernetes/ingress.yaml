@@ -1,0 +1,50 @@
+# Public entrypoint for the RustAG cloud.
+#
+# Two routing concerns:
+#   1. The control-plane API (signup, stagenet CRUD, billing webhooks) at the
+#      apex / `api.` host.
+#   2. Per-project subdomains - `my-project.stagesvm.dev` - that proxy to the
+#      tenant's stagenet. The control plane itself resolves the slug → stagenet
+#      and proxies (it already does this at `/{slug}/rpc` today), so the ingress
+#      only needs a wildcard host pointed at the control-plane Service; the
+#      subdomain-to-slug mapping happens in the app, behind auth.
+#
+# TLS via cert-manager (provisioned in terraform/networking.tf). gRPC/Yellowstone
+# stays server-side and is never exposed here - browsers can't speak it and
+# tenants never need it.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rustag-cloud
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    # Do NOT widen CORS here - the control plane sets per-route CORS itself.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - api.stagesvm.dev
+        - "*.stagesvm.dev"
+      secretName: rustag-cloud-tls
+  rules:
+    - host: api.stagesvm.dev
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: rustag-control-plane
+                port: { number: 8080 }
+    # Wildcard: every project subdomain proxies through the control plane, which
+    # maps host → stagenet slug and enforces ownership before forwarding.
+    - host: "*.stagesvm.dev"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: rustag-control-plane
+                port: { number: 8080 }

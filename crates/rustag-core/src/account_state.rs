@@ -3,10 +3,10 @@
 //! Every account in a stagenet carries a [`AccountSync`] tag that decides
 //! whether the background scheduler is allowed to overwrite it from mainnet:
 //!
-//! - `Unknown`  — never fetched; will be fetched lazily on first access.
-//! - `Clean`    — a faithful mainnet copy; the scheduler may re-sync it.
-//! - `Dirty`    — modified by a local transaction; frozen from mainnet sync.
-//! - `Pinned`   — explicitly set via the override API; immune to everything.
+//! - `Unknown`  - never fetched; will be fetched lazily on first access.
+//! - `Clean`    - a faithful mainnet copy; the scheduler may re-sync it.
+//! - `Dirty`    - modified by a local transaction; frozen from mainnet sync.
+//! - `Pinned`   - explicitly set via the override API; immune to everything.
 
 use chrono::{DateTime, Utc};
 use solana_account::{Account, AccountSharedData};

@@ -1,7 +1,7 @@
 //! Analytics time-series for a stagenet.
 //!
 //! The analytics sampler ([`crate::spawn_metrics_sampler`]) periodically captures
-//! a [`MetricsSnapshot`] — a set of stagenet-level gauges — and persists it as one
+//! a [`MetricsSnapshot`] - a set of stagenet-level gauges - and persists it as one
 //! [`MetricPoint`] row per series in the `metrics` table. The dashboard then reads
 //! these back as time-series (TVL over time, transaction volume, dirty-account
 //! growth, ...).

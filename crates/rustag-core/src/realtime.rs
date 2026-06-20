@@ -2,15 +2,15 @@
 //!
 //! Phase 1 keeps CLEAN oracle accounts fresh by *polling* mainnet every 30s
 //! ([`crate::spawn_oracle_sync`]). Phase 2 adds a *push* path: a real-time source
-//! (a Yellowstone gRPC stream or the standard `accountSubscribe` WebSocket — see
+//! (a Yellowstone gRPC stream or the standard `accountSubscribe` WebSocket - see
 //! `rustag_mirror::realtime`) streams [`RemoteAccount`] updates over a channel,
 //! and this consumer applies them to the stagenet the moment they arrive.
 //!
 //! The application rule is the same invariant the whole mirror is built on:
 //! **never overwrite locally-modified state.** A DIRTY or PINNED account (both
 //! live in the stagenet's dirty-set) is skipped; everything else is refreshed.
-//! This module is deliberately transport-agnostic — it only knows about a
-//! channel of [`RemoteAccount`]s — so the same consumer serves gRPC, WebSocket,
+//! This module is deliberately transport-agnostic - it only knows about a
+//! channel of [`RemoteAccount`]s - so the same consumer serves gRPC, WebSocket,
 //! or a test harness.
 
 use std::sync::Arc;

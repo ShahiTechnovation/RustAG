@@ -81,7 +81,7 @@ export class EphemeralStagenet {
     const created = spawnSync(bin, createArgs, { cwd, encoding: "utf8" });
     if (created.error) {
       throw new Error(
-        `could not run '${bin}' — is the RustAG CLI installed / on PATH? (${created.error.message})`,
+        `could not run '${bin}' - is the RustAG CLI installed / on PATH? (${created.error.message})`,
       );
     }
     if (created.status !== 0) {

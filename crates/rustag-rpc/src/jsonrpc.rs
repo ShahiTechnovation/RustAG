@@ -124,7 +124,7 @@ fn encoding_of(params: &[Value], idx: usize) -> Option<String> {
 
 /// Decode a transaction blob. Honors the `encoding` config. When unspecified we
 /// follow the Solana default (base58) and only fall back to base64 if base58
-/// fails — base64 blobs contain `+`/`/`/`=`, which are not valid base58, so this
+/// fails - base64 blobs contain `+`/`/`/`=`, which are not valid base58, so this
 /// avoids the misparse a base64-first order could cause.
 fn decode_transaction(
     blob: &str,

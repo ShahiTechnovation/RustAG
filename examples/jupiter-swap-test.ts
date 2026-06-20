@@ -40,7 +40,7 @@ async function main() {
   const preload = (await rest("/api/preload", { programs: ["jupiter"] })) as { loaded: number };
   console.log(`Preloaded Jupiter: ${preload.loaded} account(s) from mainnet`);
 
-  // 2. Unlimited airdrop — no faucet, no mainnet SOL.
+  // 2. Unlimited airdrop - no faucet, no mainnet SOL.
   const payer = Keypair.generate();
   const receiver = Keypair.generate();
   await rest("/api/airdrop", { pubkey: payer.publicKey.toBase58(), sol: 100 });

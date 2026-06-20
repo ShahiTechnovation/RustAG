@@ -63,9 +63,9 @@ pub async fn resolve_record(store: &AccountStore, name: Option<&str>) -> Result<
         None => {
             let mut all = store.list_stagenets().await?;
             match all.len() {
-                0 => bail!("no stagenets exist yet — run `rustag create <name>`"),
+                0 => bail!("no stagenets exist yet - run `rustag create <name>`"),
                 1 => Ok(all.remove(0)),
-                _ => bail!("multiple stagenets exist — specify one with `--stagenet <name>`"),
+                _ => bail!("multiple stagenets exist - specify one with `--stagenet <name>`"),
             }
         }
     }
@@ -107,14 +107,14 @@ pub fn fail(msg: impl AsRef<str>) {
 /// Friendly "is the stagenet running?" error for client commands.
 pub fn connection_hint(name: &str) -> anyhow::Error {
     anyhow::anyhow!(
-        "could not reach the stagenet's REST API — is it running? Start it with `rustag start {name}`"
+        "could not reach the stagenet's REST API - is it running? Start it with `rustag start {name}`"
     )
 }
 
 /// Reduce a URL to just `scheme://host[:port]` before it lands in a shareable
 /// artifact. RPC endpoints embed API keys either in the query (`?api-key=...`)
 /// *or* in the path (`/v2/<KEY>`, `/<KEY>`), so dropping only the query is not
-/// enough — we drop the path too and keep only the authority.
+/// enough - we drop the path too and keep only the authority.
 pub fn redact_url(url: &str) -> String {
     if let Some((scheme, rest)) = url.split_once("://") {
         let authority = rest.split(['/', '?', '#']).next().unwrap_or(rest);

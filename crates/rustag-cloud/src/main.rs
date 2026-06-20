@@ -1,4 +1,4 @@
-//! `rustag-cloud` — the RustAG cloud control-plane server.
+//! `rustag-cloud` - the RustAG cloud control-plane server.
 
 use clap::{Parser, Subcommand};
 
@@ -33,8 +33,18 @@ fn init_tracing() {
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| "rustag_cloud=info,tower_http=warn".into());
-    tracing_subscriber::registry()
-        .with(filter)
-        .with(tracing_subscriber::fmt::layer().with_target(false))
-        .init();
+    let registry = tracing_subscriber::registry().with(filter);
+    // Structured logs in containers: `RUSTAG_LOG_FORMAT=json` (matches the CLI).
+    let json = std::env::var("RUSTAG_LOG_FORMAT")
+        .map(|v| v.eq_ignore_ascii_case("json"))
+        .unwrap_or(false);
+    if json {
+        registry
+            .with(tracing_subscriber::fmt::layer().json().with_target(false))
+            .init();
+    } else {
+        registry
+            .with(tracing_subscriber::fmt::layer().with_target(false))
+            .init();
+    }
 }

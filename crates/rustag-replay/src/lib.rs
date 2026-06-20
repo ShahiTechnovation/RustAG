@@ -7,7 +7,7 @@
 //!   be deterministically replayed; [`verify_deterministic`] proves two replays
 //!   agree (the basis of audit-grade replay).
 //! - [`Timeline`] strings checkpoints together and computes the account-level
-//!   [`StateDiff`] between any two — "what changed, and where?".
+//!   [`StateDiff`] between any two - "what changed, and where?".
 //! - [`Lineage`] / [`branch_stagenet`] make fork-of-fork first-class, recording
 //!   the full ancestry of every branching stagenet.
 //!
@@ -89,7 +89,7 @@ mod tests {
         // Two independent replays from the checkpoint must agree.
         assert!(verify_deterministic(&cp, &journal).await.unwrap());
 
-        // And the replay reproduces the root the journal *recorded* — proving
+        // And the replay reproduces the root the journal *recorded* - proving
         // the replay matches the original execution, not just itself.
         assert_eq!(
             replay_matches_journal(&cp, &journal).await.unwrap(),

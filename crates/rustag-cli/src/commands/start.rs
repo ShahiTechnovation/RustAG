@@ -1,4 +1,4 @@
-//! `rustag start` — open a stagenet and run its servers.
+//! `rustag start` - open a stagenet and run its servers.
 
 use std::sync::Arc;
 
@@ -49,7 +49,7 @@ pub async fn run(args: StartArgs) -> Result<()> {
         if config.mirror_enabled {
             preload(&mut sn, &targets).await;
         } else {
-            warn("mirror disabled — skipping preload");
+            warn("mirror disabled - skipping preload");
         }
     }
 

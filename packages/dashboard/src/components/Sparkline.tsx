@@ -2,7 +2,7 @@ import type { MetricPoint } from "@rustag/sdk";
 
 /**
  * A dependency-free inline-SVG sparkline. Renders a metric series as a smooth
- * area chart — no charting library, so the dashboard stays lightweight.
+ * area chart - no charting library, so the dashboard stays lightweight.
  */
 export function Sparkline({
   points,

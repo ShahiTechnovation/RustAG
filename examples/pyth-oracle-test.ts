@@ -2,7 +2,7 @@
  * Pyth oracle test.
  *
  * Reads the SOL/USD Pyth price feed *through the stagenet*. On first access the
- * account is lazily fetched from mainnet, so you get the real, current price —
+ * account is lazily fetched from mainnet, so you get the real, current price -
  * with no mainnet SOL spent. Run a stagenet first (see README).
  */
 import { Connection, PublicKey } from "@solana/web3.js";
@@ -27,7 +27,7 @@ async function main() {
 
   const info = await connection.getAccountInfo(SOL_USD_PYTH);
   if (!info) {
-    throw new Error("Pyth SOL/USD account not found — is mirroring enabled?");
+    throw new Error("Pyth SOL/USD account not found - is mirroring enabled?");
   }
 
   console.log(`Owner:     ${info.owner.toBase58()}`);

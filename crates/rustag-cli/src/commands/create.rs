@@ -1,4 +1,4 @@
-//! `rustag create` — register a new staging environment.
+//! `rustag create` - register a new staging environment.
 
 use std::sync::Arc;
 

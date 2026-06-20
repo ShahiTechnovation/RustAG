@@ -84,7 +84,7 @@ pub async fn serve(stagenet: Arc<RwLock<Stagenet>>) -> Result<(), RpcServerError
         rpc = %addrs.rpc,
         ws = %addrs.ws,
         api = %addrs.api,
-        "RustAG servers starting — point your cluster URL at the RPC address"
+        "RustAG servers starting - point your cluster URL at the RPC address"
     );
 
     tokio::try_join!(

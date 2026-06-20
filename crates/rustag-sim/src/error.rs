@@ -1,7 +1,7 @@
 //! Simulation error type.
 
 /// Errors raised while running a simulation. A *failed transaction* is not an
-/// error — it is a recorded outcome in the report; an [`SimError`] means the
+/// error - it is a recorded outcome in the report; an [`SimError`] means the
 /// harness itself could not run (e.g. forking the base stagenet failed).
 #[derive(Debug, thiserror::Error)]
 pub enum SimError {

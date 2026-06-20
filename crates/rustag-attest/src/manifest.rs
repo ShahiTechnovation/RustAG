@@ -1,4 +1,4 @@
-//! The attestation manifest — the human-readable, signable claim about what a
+//! The attestation manifest - the human-readable, signable claim about what a
 //! stagenet proved.
 
 use chrono::{DateTime, Utc};

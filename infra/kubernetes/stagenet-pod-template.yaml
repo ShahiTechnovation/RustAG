@@ -1,0 +1,69 @@
+# Template for one hosted, Kata-isolated stagenet pod.
+#
+# In production the control plane's kube-rs orchestrator (the swap target for the
+# child-process Orchestrator - see docs/known-gaps.md) renders this template at
+# runtime, substituting {{TENANT_ID}} / {{STAGENET_ID}} and the image tag, then
+# creates it via the API. It is kept here as the canonical spec so the security-
+# relevant fields are reviewable in one place and version-controlled.
+#
+# The four fields that make this safe for untrusted multi-tenant code are flagged
+# CRITICAL below. Removing any one of them collapses the isolation model.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: stagenet-{{STAGENET_ID}}
+  labels:
+    app: rustag-stagenet
+    tenant-id: "{{TENANT_ID}}"
+    stagenet-id: "{{STAGENET_ID}}"
+spec:
+  # CRITICAL #1 - the security boundary. Without this the pod is a plain
+  # shared-kernel container and a guest kernel exploit reaches every co-tenant.
+  runtimeClassName: kata
+
+  # CRITICAL #2 - no node-level Kubernetes credentials inside a pod that runs
+  # adversarial bytecode.
+  automountServiceAccountToken: false
+
+  restartPolicy: Always
+  containers:
+    - name: rustag-runtime
+      image: ghcr.io/rustag/runtime:latest
+      args: ["start", "{{STAGENET_ID}}"]
+      ports:
+        - { name: rpc, containerPort: 8899 }
+        - { name: ws, containerPort: 8900 }
+        - { name: api, containerPort: 9000 }
+      # CRITICAL #3 - per-tenant resource caps so one tenant cannot starve the
+      # node (noisy-neighbour / resource-exhaustion DoS).
+      resources:
+        requests: { cpu: "250m", memory: "512Mi" }
+        limits: { cpu: "1000m", memory: "2Gi" }
+      env:
+        - { name: TENANT_ID, value: "{{TENANT_ID}}" }
+        - { name: STAGENET_ID, value: "{{STAGENET_ID}}" }
+        - { name: RUSTAG_LOG_FORMAT, value: "json" }
+        # Secrets are referenced by name, never inlined (see infra/README.md).
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef: { name: rustag-db, key: url }
+        - name: RUSTAG_MAINNET_RPC
+          valueFrom:
+            secretKeyRef: { name: rustag-upstream, key: mainnet-rpc }
+      # CRITICAL #4 - drop every Linux capability and forbid privilege
+      # escalation; the microVM is the strong boundary, this is defense in depth.
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        runAsUser: 10001
+        capabilities:
+          drop: ["ALL"]
+      livenessProbe:
+        httpGet: { path: /api/health, port: api }
+        initialDelaySeconds: 5
+        periodSeconds: 10
+      readinessProbe:
+        httpGet: { path: /api/health, port: api }
+        initialDelaySeconds: 2
+        periodSeconds: 5

@@ -1,4 +1,4 @@
-//! `rustag override` — set account state via the running stagenet.
+//! `rustag override` - set account state via the running stagenet.
 
 use std::str::FromStr;
 
@@ -28,7 +28,7 @@ pub async fn run(args: OverrideArgs) -> Result<()> {
     Pubkey::from_str(&args.pubkey)
         .map_err(|_| anyhow::anyhow!("invalid pubkey: {}", args.pubkey))?;
     if args.lamports.is_none() && args.token_balance.is_none() {
-        bail!("nothing to override — pass --lamports or --token-balance");
+        bail!("nothing to override - pass --lamports or --token-balance");
     }
 
     let store = open_store().await?;

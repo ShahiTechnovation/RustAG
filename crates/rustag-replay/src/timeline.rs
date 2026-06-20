@@ -1,4 +1,4 @@
-//! A timeline of checkpoints plus the journal between them — the time-travel
+//! A timeline of checkpoints plus the journal between them - the time-travel
 //! debugging surface.
 
 use rustag_attest::account_leaf_hash;
@@ -161,7 +161,7 @@ pub async fn verify_deterministic(checkpoint: &Checkpoint, journal: &Journal) ->
 /// other), this proves the replay reproduces the **original** execution, which
 /// is what makes a replay admissible as audit evidence.
 ///
-/// This holds when the journal is self-contained — i.e. the `checkpoint` already
+/// This holds when the journal is self-contained - i.e. the `checkpoint` already
 /// holds every account the journalled transactions touch. That is exactly the
 /// case for offline (mirror-disabled) stagenets, which is how
 /// [`Checkpoint::restore`] rebuilds state. For a journal captured against a

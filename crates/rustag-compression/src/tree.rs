@@ -3,8 +3,8 @@
 //!
 //! Solana stores compressed account/NFT state as the *root* of a Merkle tree;
 //! the leaves live off-chain. The on-chain program accepts an update to a leaf
-//! if the caller supplies a proof that authenticates against a **recent** root —
-//! not necessarily the very latest — which is what lets many writers update the
+//! if the caller supplies a proof that authenticates against a **recent** root -
+//! not necessarily the very latest - which is what lets many writers update the
 //! same tree concurrently without their proofs going stale on every block. This
 //! crate reproduces that behavior off-chain so teams can:
 //!
@@ -124,7 +124,7 @@ impl ConcurrentMerkleTree {
                 .unwrap_or(self.empty_nodes[0]);
         }
         // If the leftmost leaf of this subtree is beyond what we've filled, the
-        // whole subtree is empty — return the precomputed constant (the prune
+        // whole subtree is empty - return the precomputed constant (the prune
         // that keeps this O(filled · depth) instead of O(2^depth)).
         let first_leaf = idx << level;
         if first_leaf >= self.leaves.len() as u64 {
@@ -271,7 +271,7 @@ impl ConcurrentMerkleTree {
         })
     }
 
-    /// Whether `root` is the current root or any retained historical root —
+    /// Whether `root` is the current root or any retained historical root -
     /// i.e. a proof against it could be fast-forwarded.
     pub fn is_recent_root(&self, root: &Node) -> bool {
         *root == self.current_root_marker()
@@ -318,7 +318,7 @@ pub fn verify_path(root: &Node, leaf: &Node, index: u64, siblings: &[Node]) -> b
 /// A change to leaf `c.index` alters exactly one sibling on `target_index`'s
 /// path: the sibling at the level just below where the two leaves' paths merge,
 /// which is the highest bit at which the indices differ. (A change to the target
-/// leaf itself touches none of its siblings, so it is a no-op here — the stale
+/// leaf itself touches none of its siblings, so it is a no-op here - the stale
 /// `previous_leaf` will simply fail the final authentication.)
 fn apply_change_to_proof(proof: &mut [Node], target_index: u64, c: &ChangeLog) {
     if c.index == target_index {

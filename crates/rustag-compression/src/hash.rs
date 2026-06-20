@@ -27,7 +27,7 @@ pub fn hash_pair(left: &Node, right: &Node) -> Node {
 ///
 /// `empty[0]` is the all-zero leaf; `empty[i] = keccak(empty[i-1], empty[i-1])`.
 /// These are the canonical "no data here" nodes that a sparse tree uses for
-/// unfilled subtrees — identical to the on-chain program's constants.
+/// unfilled subtrees - identical to the on-chain program's constants.
 pub fn empty_node_table(max_depth: u32) -> Vec<Node> {
     let mut table = Vec::with_capacity(max_depth as usize + 1);
     table.push([0u8; 32]);

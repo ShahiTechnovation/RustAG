@@ -1,11 +1,11 @@
 # @rustag/anchor-plugin
 
-Native [Anchor](https://www.anchor-lang.com/) integration for **RustAG** — spin up an
+Native [Anchor](https://www.anchor-lang.com/) integration for **RustAG** - spin up an
 ephemeral, mainnet-mirroring stagenet for your Anchor tests, get a funded
 `AnchorProvider`, and tear it down automatically.
 
 Your tests run against **real** Pyth prices, **real** Raydium pools, and **real**
-token mints — with unlimited airdrops and zero mainnet SOL.
+token mints - with unlimited airdrops and zero mainnet SOL.
 
 ## Install
 
@@ -33,7 +33,7 @@ describe("my program against mainnet state", () => {
   after(() => ctx.stagenet.stop());
 
   it("reads a real Pyth price", async () => {
-    // ctx.provider is a normal AnchorProvider — use Program, etc.
+    // ctx.provider is a normal AnchorProvider - use Program, etc.
     const balance = await ctx.provider.connection.getBalance(ctx.wallet.publicKey);
     // ... your assertions ...
   });

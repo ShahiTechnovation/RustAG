@@ -110,7 +110,7 @@ async fn failed_transaction_is_recorded_without_dirtying() {
 async fn lazy_account_fetch_from_mainnet() {
     let rpc = std::env::var("RUSTAG_MAINNET_RPC")
         .unwrap_or_else(|_| "https://api.mainnet-beta.solana.com".to_string());
-    // The Pyth SOL/USD price feed — always exists, always has data.
+    // The Pyth SOL/USD price feed - always exists, always has data.
     let sol_usd_pyth = Pubkey::from_str("H6ARHf6YXhGYeQfUzQNGk6rDNnLBQKrenN712K4AQJEG").unwrap();
 
     let mut sn = Stagenet::local_with_mainnet("test", &rpc).await.unwrap();

@@ -6,8 +6,8 @@ export default function AccountsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-zinc-50">Accounts</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+        <h1 className="font-display text-3xl font-bold tracking-tight text-fg">Accounts</h1>
+        <p className="mt-1 text-sm text-muted">
           Every account in the stagenet, with its mainnet-sync state.
         </p>
       </div>

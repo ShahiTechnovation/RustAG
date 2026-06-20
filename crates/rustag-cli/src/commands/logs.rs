@@ -1,4 +1,4 @@
-//! `rustag logs` — tail the transaction feed from the running stagenet.
+//! `rustag logs` - tail the transaction feed from the running stagenet.
 
 use std::collections::HashSet;
 use std::time::Duration;
@@ -80,7 +80,7 @@ fn print_tx(tx: &Value) {
         style("✗").red().bold()
     };
     let programs = if programs.is_empty() {
-        "—".to_string()
+        "-".to_string()
     } else {
         programs
     };

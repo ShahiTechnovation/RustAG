@@ -1,7 +1,7 @@
 {
   "name": "@rustag/anchor-plugin",
   "version": "0.1.0",
-  "description": "Anchor integration for RustAG — boot an ephemeral mainnet-mirroring stagenet for your Anchor tests",
+  "description": "Anchor integration for RustAG - boot an ephemeral mainnet-mirroring stagenet for your Anchor tests",
   "type": "module",
   "license": "MIT OR Apache-2.0",
   "main": "./src/index.ts",

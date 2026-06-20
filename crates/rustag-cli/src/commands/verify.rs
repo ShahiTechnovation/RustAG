@@ -1,4 +1,4 @@
-//! `rustag verify` — verify a staging attestation offline (Phase 3, P3.1).
+//! `rustag verify` - verify a staging attestation offline (Phase 3, P3.1).
 
 use std::path::PathBuf;
 
@@ -51,7 +51,7 @@ pub async fn run(args: VerifyArgs) -> Result<()> {
     }
 
     // Verify the committed state root against a local stagenet. If the user
-    // *explicitly* named a stagenet, an unresolved target is a hard error — we
+    // *explicitly* named a stagenet, an unresolved target is a hard error - we
     // must never report VALID after silently skipping the state-root check the
     // user asked for. Only the implicit (manifest-derived) target may fall back
     // to signature-only.
@@ -89,7 +89,7 @@ pub async fn run(args: VerifyArgs) -> Result<()> {
         );
     }
 
-    info("no matching local stagenet found — verified signature only (state root NOT checked)");
+    info("no matching local stagenet found - verified signature only (state root NOT checked)");
     finish(signature_valid)
 }
 

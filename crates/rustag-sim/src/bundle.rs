@@ -2,7 +2,7 @@
 //!
 //! A Jito bundle is a sequence of transactions that lands **all-or-nothing**: if
 //! any transaction fails, none of the bundle's effects persist. That atomicity
-//! is exactly what makes bundles useful — and dangerous — for DeFi: a searcher
+//! is exactly what makes bundles useful - and dangerous - for DeFi: a searcher
 //! can assume every transaction either all execute in order or none do.
 //!
 //! This module reproduces the semantics on an isolated fork. [`simulate_bundle`]
@@ -48,7 +48,7 @@ pub fn default_tip_accounts() -> Vec<Pubkey> {
 pub struct BundleReport {
     /// Bundle label.
     pub label: String,
-    /// Whether every transaction succeeded — i.e. the bundle would land.
+    /// Whether every transaction succeeded - i.e. the bundle would land.
     pub landed: bool,
     /// Number of transactions in the bundle.
     pub total: usize,

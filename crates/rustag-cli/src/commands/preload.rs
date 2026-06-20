@@ -1,4 +1,4 @@
-//! `rustag preload` — load known mainnet programs/oracles via the running stagenet.
+//! `rustag preload` - load known mainnet programs/oracles via the running stagenet.
 
 use anyhow::{bail, Result};
 use clap::Args;

@@ -108,7 +108,7 @@ pub struct VerificationReport {
 }
 
 impl VerificationReport {
-    /// Whether every check passed — the attestation is fully valid.
+    /// Whether every check passed - the attestation is fully valid.
     pub fn is_valid(&self) -> bool {
         self.signature_valid && self.state_root_matches && self.account_count_matches
     }

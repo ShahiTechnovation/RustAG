@@ -51,7 +51,7 @@ pub struct TransactionRecord {
 
 /// A persisted Activity Scheduler entry (powers `rustag schedule` and the
 /// background [`crate`] scheduler loop). `action_json` is an opaque, serialized
-/// scheduler action — `rustag-core` stores and returns it verbatim and never
+/// scheduler action - `rustag-core` stores and returns it verbatim and never
 /// interprets it, so the scheduler crate owns the action schema.
 #[derive(Debug, Clone)]
 pub struct ScheduleRecord {
@@ -80,11 +80,11 @@ impl AccountStore {
     /// Connect to `db_path` (or `:memory:`), creating and migrating as needed.
     pub async fn connect(db_path: &str) -> Result<Self> {
         let pool = if db_path == ":memory:" {
-            // A single shared connection — multiple connections would each get a
+            // A single shared connection - multiple connections would each get a
             // separate in-memory database.
             let opts = SqliteConnectOptions::from_str("sqlite::memory:")?.foreign_keys(true);
             // The single connection IS the database. Keep it pinned and never
-            // reaped — otherwise sqlx's idle/lifetime reaper would drop it and
+            // reaped - otherwise sqlx's idle/lifetime reaper would drop it and
             // silently wipe all in-memory state.
             SqlitePoolOptions::new()
                 .min_connections(1)
