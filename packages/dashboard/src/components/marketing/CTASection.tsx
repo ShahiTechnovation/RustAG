@@ -13,12 +13,12 @@ export function CTASection() {
               Spin up your <span className="font-serif italic text-brand">mirror</span>.
             </h2>
             <p className="mx-auto mt-5 max-w-xl text-pretty text-base leading-relaxed text-muted">
-              Test against real mainnet state with zero SOL spent. Your staging Solana is one command
-              away.
+              RustAG is in private beta. Join the early-access list and we&apos;ll reach out as we
+              open up your staging Solana.
             </p>
             <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-              <ButtonLink href="/app" size="lg" className="group">
-                Launch the dashboard
+              <ButtonLink href="/early-access" size="lg" className="group">
+                Request early access
                 <ArrowUpRight
                   size={18}
                   className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"

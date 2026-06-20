@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import {
   Activity,
+  AlertTriangle,
   CalendarClock,
   Database,
   FlaskConical,
@@ -155,6 +156,19 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <LiveStatus />
         </header>
+
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-state-dirty/30 bg-state-dirty/[0.07] px-4 py-2.5 text-xs text-state-dirty sm:px-6">
+          <span className="inline-flex items-center gap-1.5 font-mono uppercase tracking-wider">
+            <AlertTriangle size={13} />
+            Beta
+          </span>
+          <span className="text-muted">
+            This dashboard is a work-in-progress preview — data may be incomplete or unavailable.
+          </span>
+          <Link href="/early-access" className="font-medium text-brand hover:text-brand-strong">
+            Request early access →
+          </Link>
+        </div>
 
         <main className="flex-1 px-4 py-6 sm:px-6 sm:py-8">{children}</main>
       </div>

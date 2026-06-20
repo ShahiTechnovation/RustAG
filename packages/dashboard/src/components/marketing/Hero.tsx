@@ -61,8 +61,8 @@ export function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease, delay: 0.19 }}
         >
-          <ButtonLink href="/app" size="lg" className="group">
-            Launch the dashboard
+          <ButtonLink href="/early-access" size="lg" className="group">
+            Request early access
             <ArrowUpRight size={18} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </ButtonLink>
           <ButtonLink href="#features" size="lg" variant="secondary" className="group">

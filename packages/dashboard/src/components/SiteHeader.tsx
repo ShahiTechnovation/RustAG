@@ -32,7 +32,12 @@ export function SiteHeader() {
           scrolled ? "glass" : "border border-transparent",
         )}
       >
-        <Logo showTag={false} />
+        <div className="flex items-center gap-2">
+          <Logo showTag={false} />
+          <span className="rounded-[3px] border border-brand/40 bg-brand/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.18em] text-brand">
+            Beta
+          </span>
+        </div>
         <nav className="hidden items-center gap-1 md:flex">
           {LINKS.map((l) => (
             <Link
@@ -54,8 +59,11 @@ export function SiteHeader() {
           >
             <GitHubIcon size={18} />
           </a>
-          <ButtonLink href="/app" size="sm">
-            Launch app
+          <ButtonLink href="/app" size="sm" variant="secondary" className="hidden sm:inline-flex">
+            Preview app
+          </ButtonLink>
+          <ButtonLink href="/early-access" size="sm">
+            Early access
           </ButtonLink>
         </div>
       </div>
