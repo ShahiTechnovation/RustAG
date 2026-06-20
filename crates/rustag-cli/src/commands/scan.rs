@@ -1,4 +1,4 @@
-//! `rustag scan` — scan a stagenet's recorded transactions for exploit
+//! `rustag scan` - scan a stagenet's recorded transactions for exploit
 //! signatures (Phase 3, P3.3).
 
 use anyhow::{bail, Result};

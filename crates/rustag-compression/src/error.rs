@@ -12,12 +12,12 @@ pub enum CompressionError {
     LeafOutOfRange { index: u64, len: u64 },
 
     /// A proof referenced a root that is no longer within the root-history
-    /// window — the proof is too stale to fast-forward.
+    /// window - the proof is too stale to fast-forward.
     #[error("proof root is not within the recent root-history window")]
     StaleRoot,
 
     /// The (fast-forwarded) proof did not reproduce the current root for the
-    /// supplied previous leaf — the proof or previous leaf is wrong.
+    /// supplied previous leaf - the proof or previous leaf is wrong.
     #[error("invalid proof: does not authenticate the previous leaf against the current root")]
     InvalidProof,
 

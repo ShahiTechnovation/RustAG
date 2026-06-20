@@ -2,15 +2,15 @@
 //!
 //! An [`Action`] is a small, serializable description of an on-chain effect.
 //! Together with a [`Schedule`](crate::Schedule) it forms a recurring activity
-//! that simulates realistic, ongoing usage of a stagenet — periodic swaps,
+//! that simulates realistic, ongoing usage of a stagenet - periodic swaps,
 //! deposits, liquidations, faucet top-ups, etc.
 //!
 //! Three primitives cover the common cases:
-//! - [`Action::Airdrop`] — credit SOL to a wallet (no signer needed).
-//! - [`Action::Transfer`] — build + sign a SOL transfer each fire.
-//! - [`Action::RawTransaction`] — replay a pre-signed transaction blob. Because
+//! - [`Action::Airdrop`] - credit SOL to a wallet (no signer needed).
+//! - [`Action::Transfer`] - build + sign a SOL transfer each fire.
+//! - [`Action::RawTransaction`] - replay a pre-signed transaction blob. Because
 //!   a stagenet's blockhash never expires, a signed transaction can be resubmitted
-//!   indefinitely — ideal for replaying a real swap/deposit instruction sequence.
+//!   indefinitely - ideal for replaying a real swap/deposit instruction sequence.
 
 use base64::Engine;
 use serde::{Deserialize, Serialize};
@@ -32,14 +32,14 @@ const LAMPORTS_PER_SOL: f64 = 1_000_000_000.0;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Action {
-    /// Airdrop `sol` SOL to `pubkey`. Unlimited and free — no signer required.
+    /// Airdrop `sol` SOL to `pubkey`. Unlimited and free - no signer required.
     Airdrop { pubkey: String, sol: f64 },
 
     /// Sign and send a SOL transfer of `sol` from the wallet identified by the
     /// base58-encoded `secret_key` to `to`.
     ///
     /// `secret_key` is a base58-encoded 64-byte keypair (the Phantom export /
-    /// `Keypair::to_base58_string` format). This is a *staging* convenience —
+    /// `Keypair::to_base58_string` format). This is a *staging* convenience -
     /// never schedule a mainnet secret here.
     Transfer {
         secret_key: String,
@@ -48,7 +48,7 @@ pub enum Action {
     },
 
     /// Resubmit a base64-encoded, pre-signed transaction every time the schedule
-    /// fires. The most flexible action — capture any real instruction sequence
+    /// fires. The most flexible action - capture any real instruction sequence
     /// (a Jupiter swap, a lending deposit) once and replay it on a cadence.
     RawTransaction { transaction_base64: String },
 }

@@ -1,4 +1,4 @@
-//! A tamper-evident, hash-chained audit log — the SOC 2 groundwork.
+//! A tamper-evident, hash-chained audit log - the SOC 2 groundwork.
 //!
 //! Each entry commits to the hash of the previous entry, so the whole history
 //! is a hash chain. Any insertion, deletion, or edit anywhere in the log breaks

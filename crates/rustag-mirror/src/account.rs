@@ -5,7 +5,7 @@ use solana_pubkey::Pubkey;
 /// A snapshot of an account as it exists on mainnet right now.
 ///
 /// This is deliberately a dumb data holder with no notion of local
-/// dirty/clean state — `rustag-core` wraps it into its own `AccountEntry`.
+/// dirty/clean state - `rustag-core` wraps it into its own `AccountEntry`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RemoteAccount {
     pub pubkey: Pubkey,

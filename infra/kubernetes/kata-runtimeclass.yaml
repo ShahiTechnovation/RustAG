@@ -1,0 +1,30 @@
+# The security boundary for the entire multi-tenant platform.
+#
+# A RuntimeClass named "kata" tells the kubelet to run a pod with the Kata
+# Containers runtime (a Firecracker microVM) instead of the default shared-kernel
+# container runtime. Any pod that sets `runtimeClassName: kata` then executes
+# inside its own lightweight VM, so untrusted Solana program bytecode in one
+# tenant's stagenet cannot reach the host kernel or any co-tenant.
+#
+# Prerequisite: the Kata runtime + a Firecracker-capable handler must be
+# installed on the nodes first (e.g. via the kata-deploy DaemonSet). This object
+# only registers the class; it does not install the runtime.
+#
+# `handler` must match the runtime handler configured in the node's containerd
+# config (`kata` is the conventional handler name for the kata-deploy install;
+# some installs use `kata-fc` specifically for the Firecracker VMM - match yours).
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: kata
+handler: kata
+# Schedule kata pods only onto nodes the operator has labelled as Kata-capable.
+scheduling:
+  nodeSelector:
+    katacontainers.io/kata-runtime: "true"
+overhead:
+  # Accounts for the per-VM memory/CPU overhead so the scheduler reserves for it.
+  # microVMs cost ~10-20% more than plain containers - budgeted here, not hidden.
+  podFixed:
+    cpu: "250m"
+    memory: "160Mi"

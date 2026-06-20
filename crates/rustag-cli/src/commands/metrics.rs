@@ -1,4 +1,4 @@
-//! `rustag metrics` — show analytics time-series for a running stagenet.
+//! `rustag metrics` - show analytics time-series for a running stagenet.
 
 use anyhow::Result;
 use clap::Args;
@@ -36,7 +36,7 @@ pub async fn run(args: MetricsArgs) -> Result<()> {
     let body: Value = resp.json().await.unwrap_or(Value::Null);
 
     let Some(metrics) = body.get("metrics").and_then(|v| v.as_object()) else {
-        info("no metrics yet — the analytics sampler captures one point per minute");
+        info("no metrics yet - the analytics sampler captures one point per minute");
         return Ok(());
     };
     println!();

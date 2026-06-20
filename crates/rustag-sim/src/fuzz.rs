@@ -2,7 +2,7 @@
 //!
 //! A fuzz run drives a deterministic, seeded sequence of transactions against an
 //! isolated fork and, after each one, checks a set of caller-supplied
-//! [`Invariant`]s — properties that must hold no matter what the program does
+//! [`Invariant`]s - properties that must hold no matter what the program does
 //! ("the vault's owner never changes", "the treasury never drops below X").
 //! Any violation is captured together with the seed needed to reproduce it, so
 //! a failing run is always replayable.

@@ -8,14 +8,14 @@
 //! `my-project.stagesvm.dev`).
 //!
 //! Endpoints:
-//! - `POST /v1/signup`            — create a tenant, returns the first API key.
-//! - `POST /v1/api-keys`          — issue another API key (auth).
-//! - `POST /v1/stagenets`         — create + start a stagenet (auth).
-//! - `GET  /v1/stagenets`         — list the tenant's stagenets (auth).
-//! - `GET  /v1/stagenets/{slug}`  — one stagenet (auth).
-//! - `DELETE /v1/stagenets/{slug}`— stop + delete a stagenet (auth).
-//! - `POST /{slug}/rpc`           — JSON-RPC proxy to the stagenet.
-//! - `ANY  /{slug}/api/*`         — REST proxy to the stagenet.
+//! - `POST /v1/signup`            - create a tenant, returns the first API key.
+//! - `POST /v1/api-keys`          - issue another API key (auth).
+//! - `POST /v1/stagenets`         - create + start a stagenet (auth).
+//! - `GET  /v1/stagenets`         - list the tenant's stagenets (auth).
+//! - `GET  /v1/stagenets/{slug}`  - one stagenet (auth).
+//! - `DELETE /v1/stagenets/{slug}`- stop + delete a stagenet (auth).
+//! - `POST /{slug}/rpc`           - JSON-RPC proxy to the stagenet.
+//! - `ANY  /{slug}/api/*`         - REST proxy to the stagenet.
 
 mod auth;
 mod config;
@@ -131,7 +131,7 @@ async fn signup(
     Ok(Json(json!({
         "tenant": tenant,
         "apiKey": api_key,
-        "note": "store this API key now — it is shown only once",
+        "note": "store this API key now - it is shown only once",
     })))
 }
 
@@ -312,5 +312,58 @@ mod tests {
         assert!(store.tenant_by_key("rk_nope").await.unwrap().is_none());
         // Duplicate email is rejected.
         assert!(store.create_tenant("Acme2", "a@acme.dev").await.is_err());
+    }
+
+    /// Isolation canary (spec 2.8 / docs/threat-model.md): prove tenant A cannot
+    /// read, enumerate, or reach tenant B's stagenet. This must stay green - it is
+    /// the single test that backs the "zero cross-tenant access" SLO. It exercises
+    /// the *real* `owned_stagenet` guard, not a reimplementation of it.
+    #[tokio::test]
+    async fn cross_tenant_isolation_is_enforced() {
+        let store = Arc::new(ControlPlaneStore::connect(":memory:").await.unwrap());
+        let config = Arc::new(CloudConfig::from_env());
+        let state = AppState {
+            store: Arc::clone(&store),
+            orch: Arc::new(Orchestrator::new(Arc::clone(&config))),
+            http: reqwest::Client::new(),
+            config,
+        };
+
+        let (alice, _) = store.create_tenant("Alice", "alice@a.dev").await.unwrap();
+        let (bob, _) = store.create_tenant("Bob", "bob@b.dev").await.unwrap();
+
+        // Alice owns a stagenet.
+        let rec = CloudStagenet {
+            id: uuid::Uuid::new_v4(),
+            tenant_id: alice.id,
+            slug: "alice-proj".to_string(),
+            name: "alice-proj".to_string(),
+            status: "running".to_string(),
+            rpc_port: 20000,
+            ws_port: 20001,
+            api_port: 20002,
+            mainnet_rpc: "https://example.invalid".to_string(),
+            pid: None,
+            work_dir: "/tmp/alice-proj".to_string(),
+            created_at: chrono::Utc::now(),
+            last_active: None,
+        };
+        store.insert_stagenet(&rec).await.unwrap();
+
+        // Alice can read her own stagenet through the guard.
+        assert!(owned_stagenet(&state, &alice.id, "alice-proj")
+            .await
+            .is_ok());
+
+        // Bob cannot read it - the guard returns NotFound (so Bob can't even
+        // distinguish "exists but not yours" from "doesn't exist").
+        assert!(matches!(
+            owned_stagenet(&state, &bob.id, "alice-proj").await,
+            Err(CloudError::NotFound(_))
+        ));
+
+        // Bob's listing never includes Alice's stagenet; Alice's does.
+        assert_eq!(store.list_stagenets(&bob.id).await.unwrap().len(), 0);
+        assert_eq!(store.list_stagenets(&alice.id).await.unwrap().len(), 1);
     }
 }

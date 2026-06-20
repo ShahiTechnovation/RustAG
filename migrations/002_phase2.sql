@@ -1,8 +1,8 @@
 -- RustAG Phase 2 schema additions (SQLite; Postgres-portable).
 --
 -- Adds two subsystems on top of the Phase 1 schema:
---   * `schedules` — the Activity Scheduler (recurring on-chain actions).
---   * `metrics`   — the Analytics time-series (one row per sample per series).
+--   * `schedules` - the Activity Scheduler (recurring on-chain actions).
+--   * `metrics`   - the Analytics time-series (one row per sample per series).
 --
 -- As in Phase 1: no SQLite-only column types, timestamps as ISO-8601 TEXT,
 -- booleans as INTEGER(0/1), so the same DDL migrates cleanly to Postgres /

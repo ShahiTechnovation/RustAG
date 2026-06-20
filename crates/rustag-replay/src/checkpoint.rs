@@ -12,7 +12,7 @@ use crate::error::Result;
 /// content-addressed by its Merkle [`state_root`](rustag_attest::state_root).
 ///
 /// Restoring a checkpoint rebuilds an isolated, offline stagenet carrying
-/// exactly the captured state — the basis of time-travel debugging and
+/// exactly the captured state - the basis of time-travel debugging and
 /// security-audit replays.
 #[derive(Debug, Clone)]
 pub struct Checkpoint {

@@ -9,7 +9,7 @@
 //! stops at the first difference.
 //!
 //! The reference backend is LiteSVM (both sides here). A second backend pointed
-//! at a real Firedancer RPC is a `Stagenet`-shaped extension point — the
+//! at a real Firedancer RPC is a `Stagenet`-shaped extension point - the
 //! *divergence-detection logic below is the part that has to be correct*, and it
 //! is exercised by the tests today.
 
@@ -84,7 +84,7 @@ pub async fn differential(
             return Ok(report(label, steps, Some(div)));
         }
 
-        // Compare the full state root after each step — the strongest check.
+        // Compare the full state root after each step - the strongest check.
         let lr = hex::encode(state_root(&left.export_accounts().await?));
         let rr = hex::encode(state_root(&right.export_accounts().await?));
         if let Some(div) = compare_field(step, "stateRoot", lr, rr) {

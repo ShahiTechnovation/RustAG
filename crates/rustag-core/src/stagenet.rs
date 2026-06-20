@@ -56,7 +56,7 @@ pub struct AccountOverride {
 
 /// A persistent, mainnet-mirroring staging environment for Solana programs.
 pub struct Stagenet {
-    /// The LiteSVM runtime — executes transactions.
+    /// The LiteSVM runtime - executes transactions.
     svm: LiteSVM,
     /// Persisted account/transaction state.
     store: Arc<AccountStore>,
@@ -252,7 +252,7 @@ impl Stagenet {
 
     /// Fork this stagenet into a fresh, **offline in-memory** copy carrying the
     /// same account state. The fork has mirroring disabled and its own database,
-    /// so transactions run against it never touch mainnet or the original — the
+    /// so transactions run against it never touch mainnet or the original - the
     /// basis of the simulation framework ("what if N users act at once?").
     pub async fn fork(&self, name: &str) -> Result<Stagenet> {
         let snapshot = self.export_accounts().await?;
@@ -264,7 +264,7 @@ impl Stagenet {
 
     /// Apply a streamed mainnet account update from the real-time mirror.
     /// Returns `true` if applied, `false` if skipped because the account is
-    /// locally modified (dirty or pinned — both live in the dirty-set).
+    /// locally modified (dirty or pinned - both live in the dirty-set).
     pub async fn apply_realtime_update(&mut self, remote: RemoteAccount) -> Result<bool> {
         if self.dirty_set.contains(&remote.pubkey) {
             return Ok(false);
@@ -295,7 +295,7 @@ impl Stagenet {
     // --- the lazy mirror ------------------------------------------------
 
     /// Pre-load every account a transaction touches that we don't already have.
-    /// This is the lazy fetch — "mainnet on demand". Fetch failures are logged
+    /// This is the lazy fetch - "mainnet on demand". Fetch failures are logged
     /// and tolerated so a transaction can still proceed.
     #[tracing::instrument(skip(self, account_keys), fields(stagenet = %self.id))]
     pub async fn pre_load_accounts_for_tx(&mut self, account_keys: &[Pubkey]) -> Result<()> {
@@ -305,7 +305,7 @@ impl Stagenet {
         let mut to_fetch: Vec<Pubkey> = Vec::new();
         for key in account_keys {
             if self.dirty_set.contains(key) {
-                continue; // locally modified — never re-fetch
+                continue; // locally modified - never re-fetch
             }
             if self.svm.get_account(key).is_some() {
                 continue; // already loaded
@@ -341,8 +341,8 @@ impl Stagenet {
         Ok(())
     }
 
-    /// Pre-load all accounts a transaction references — the static keys *and*,
-    /// for v0 transactions, the accounts resolved through address lookup tables —
+    /// Pre-load all accounts a transaction references - the static keys *and*,
+    /// for v0 transactions, the accounts resolved through address lookup tables -
     /// and return the complete set of writable account keys for dirty tracking.
     async fn prepare_accounts(&mut self, message: &VersionedMessage) -> Result<Vec<Pubkey>> {
         let static_keys = message.static_account_keys().to_vec();
@@ -507,7 +507,7 @@ impl Stagenet {
         })
     }
 
-    /// Unlimited airdrop — the headline feature against the faucet problem.
+    /// Unlimited airdrop - the headline feature against the faucet problem.
     ///
     /// Uses LiteSVM's airdrop (a real system transfer) when possible, and falls
     /// back to crediting the balance directly when that would fail (e.g. an

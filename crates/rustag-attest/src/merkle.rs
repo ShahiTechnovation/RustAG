@@ -4,7 +4,7 @@
 //! for nodes) to prevent second-preimage attacks where a 64-byte internal node
 //! could be reinterpreted as two leaves. When a layer has an odd number of
 //! nodes the final node is duplicated (hashed with itself), the standard
-//! "Bitcoin-style" promotion — documented here because it affects proof shape.
+//! "Bitcoin-style" promotion - documented here because it affects proof shape.
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -146,7 +146,7 @@ impl MerkleTree {
 /// A Merkle inclusion proof: the sibling hashes from a leaf up to the root.
 ///
 /// The direction (left/right) at each level is derivable from `leaf_index`, so
-/// it is not stored — keeping the artifact compact and unambiguous.
+/// it is not stored - keeping the artifact compact and unambiguous.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MerkleProof {
     /// Position of the proven leaf within the leaf layer.

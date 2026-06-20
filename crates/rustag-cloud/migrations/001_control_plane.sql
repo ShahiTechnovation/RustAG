@@ -3,7 +3,7 @@
 -- This is the *control plane* DB: tenants, API keys, and the registry of hosted
 -- stagenets with their allocated ports and process status. Each hosted stagenet
 -- runs as an isolated child process with its OWN per-stagenet data-plane DB
--- (Phase 1 `.rustag/db.sqlite`) inside its working directory — so the blast
+-- (Phase 1 `.rustag/db.sqlite`) inside its working directory - so the blast
 -- radius of one tenant's stagenet is a single process + a single file.
 --
 -- Portable to Postgres/Redis in production: same DDL, swap the pool. Redis fronts

@@ -1,4 +1,4 @@
-//! `rustag tree` — build an off-chain concurrent Merkle tree and print its root
+//! `rustag tree` - build an off-chain concurrent Merkle tree and print its root
 //! and proofs (Phase 3, P3.4).
 //!
 //! A standalone utility for teams working with compressed accounts/NFTs: compute

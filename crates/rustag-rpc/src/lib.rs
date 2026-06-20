@@ -1,4 +1,4 @@
-//! RustAG RPC — a Solana-compatible JSON-RPC + WebSocket server, plus a REST API
+//! RustAG RPC - a Solana-compatible JSON-RPC + WebSocket server, plus a REST API
 //! for the dashboard, all backed by a single [`rustag_core::Stagenet`].
 //!
 //! Point any Solana client (`@solana/web3.js`, `anchor`, the `solana` CLI) at the

@@ -5,7 +5,7 @@
 //! of pulling `solana-rpc-client`, which would fork the Solana crate versions
 //! that [`litesvm`](https://docs.rs/litesvm) unifies on.
 //!
-//! The mirror knows nothing about local dirty/clean tracking — that lives in
+//! The mirror knows nothing about local dirty/clean tracking - that lives in
 //! `rustag-core`. It is a pure read-side: "give me the current mainnet state of
 //! these pubkeys".
 

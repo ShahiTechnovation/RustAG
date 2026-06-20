@@ -1,7 +1,7 @@
 # RustAG Examples
 
 Runnable scripts that talk to a **live** stagenet via a standard
-`@solana/web3.js` `Connection` — proving RustAG is a drop-in cluster.
+`@solana/web3.js` `Connection` - proving RustAG is a drop-in cluster.
 
 ## Setup
 

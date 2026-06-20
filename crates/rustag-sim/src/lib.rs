@@ -1,14 +1,14 @@
 //! RustAG simulation framework.
 //!
 //! Fork a stagenet into an isolated, in-memory copy, replay or stress-test
-//! transactions against it, and compare outcomes — without ever mutating the
+//! transactions against it, and compare outcomes - without ever mutating the
 //! original or touching mainnet. This answers questions like:
 //!
-//! - *"What if 1,000 users liquidate simultaneously?"* — [`stress`].
+//! - *"What if 1,000 users liquidate simultaneously?"* - [`stress`].
 //! - *"Given the same starting state, which of these strategies behaves best?"*
-//!   — [`compare`].
+//!   - [`compare`].
 //! - *"Replay these N transactions and tell me the success rate and CU spend."*
-//!   — [`replay`] / [`fork_and_replay`].
+//!   - [`replay`] / [`fork_and_replay`].
 //!
 //! ```no_run
 //! # async fn demo() -> Result<(), Box<dyn std::error::Error>> {

@@ -38,7 +38,7 @@ async function main() {
   const list = await api("/api/schedules");
   const mine = list.schedules.find((s: any) => s.id === created.id);
   console.log(`\n  runs so far: ${mine?.runCount ?? 0}`);
-  console.log(`  last status: ${mine?.lastStatus ?? "—"}`);
+  console.log(`  last status: ${mine?.lastStatus ?? "-"}`);
 
   await api(`/api/schedules/${created.id}`, { method: "DELETE" });
   console.log("\n✓ Activity fired on schedule, then was removed.");

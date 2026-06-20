@@ -1,7 +1,7 @@
 //! RustAG Activity Scheduler.
 //!
 //! Schedule recurring on-chain actions against a running stagenet to simulate
-//! realistic, ongoing usage — periodic swaps, deposits, liquidations, faucet
+//! realistic, ongoing usage - periodic swaps, deposits, liquidations, faucet
 //! top-ups. An *activity* pairs a [`Schedule`] (a `@every` interval or a 5-field
 //! cron expression) with an [`Action`] (airdrop, signed transfer, or replay of a
 //! pre-signed transaction).

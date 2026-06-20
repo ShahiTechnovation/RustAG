@@ -18,7 +18,7 @@
 //! `minute hour day-of-month month day-of-week`, with `*`, ranges (`a-b`),
 //! lists (`a,b,c`), and steps (`*/n`, `a-b/n`). Following Vixie cron, when both
 //! day-of-month and day-of-week are restricted, a day matches if **either**
-//! field matches. No external dependency — this keeps RustAG dependency-light.
+//! field matches. No external dependency - this keeps RustAG dependency-light.
 
 use std::collections::BTreeSet;
 use std::time::Duration;
@@ -186,7 +186,7 @@ impl CronSchedule {
             .with_second(0)?
             .with_nanosecond(0)?;
         // Scan minute-by-minute up to ~4 years + a margin. The bound must exceed
-        // the longest gap between matches of any valid cron — notably the leap-day
+        // the longest gap between matches of any valid cron - notably the leap-day
         // expression `0 0 29 2 *`, which fires only once every ~4 years.
         for _ in 0..(4 * 366 * 24 * 60 + 2 * 24 * 60) {
             if self.matches(&dt) {

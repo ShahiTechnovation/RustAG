@@ -36,7 +36,7 @@ pub async fn replay(
 
 /// Build and run one transaction per actor against `fork`.
 ///
-/// Models "what if `actors` users all act at once?" — e.g. a thundering herd of
+/// Models "what if `actors` users all act at once?" - e.g. a thundering herd of
 /// liquidations or swaps. `build(i)` produces the i-th actor's transaction.
 pub async fn stress<F>(
     fork: &mut Stagenet,

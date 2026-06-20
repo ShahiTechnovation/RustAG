@@ -3,7 +3,7 @@
  *
  * Funds a payer, builds N signed transfers, and replays them against an isolated
  * *fork* of the stagenet via `POST /api/simulate`. The base stagenet is never
- * mutated — this answers "what happens if N users all act at once?". Run a
+ * mutated - this answers "what happens if N users all act at once?". Run a
  * stagenet first (see README).
  */
 import {
@@ -64,7 +64,7 @@ async function main() {
   console.log(`  ${report.succeeded}/${report.total} succeeded (${report.failed} failed)`);
   console.log(`  total compute units: ${report.totalComputeUnits}`);
   console.log(`  wall-clock:          ${report.durationMs}ms\n`);
-  console.log("✓ Ran against an isolated fork — the base stagenet is untouched.");
+  console.log("✓ Ran against an isolated fork - the base stagenet is untouched.");
 }
 
 main()

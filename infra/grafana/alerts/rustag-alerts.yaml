@@ -1,0 +1,79 @@
+# Prometheus alerting rules for the RustAG cloud SLOs (see ../../../docs/slo.md).
+#
+# Each alert maps to a specific SLO. The metric names match the OTLP exporter the
+# Phase 1 tracing spans feed (the exporter wiring is a tracked gap in
+# docs/known-gaps.md - these rules are the target the exporter must satisfy).
+# Apply with the Prometheus Operator (kind: PrometheusRule) or load into Grafana
+# alerting.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: rustag-slo-alerts
+  labels:
+    app: rustag
+    role: alert-rules
+spec:
+  groups:
+    - name: rustag-availability
+      rules:
+        - alert: ControlPlaneDown
+          # SLO: control-plane API 99.5% uptime.
+          expr: up{job="rustag-control-plane"} == 0
+          for: 2m
+          labels: { severity: critical }
+          annotations:
+            summary: "RustAG control plane is down"
+            runbook: "Check the control-plane Deployment, then the Postgres/Redis dependencies."
+
+        - alert: StagenetCreateSlow
+          # SLO: stagenet creation succeeds within 30s, 99% of the time.
+          expr: histogram_quantile(0.99, sum by (le) (rate(rustag_stagenet_create_seconds_bucket[10m]))) > 30
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: "p99 stagenet creation is over the 30s SLO"
+
+    - name: rustag-latency
+      rules:
+        - alert: GetAccountInfoCacheHitSlow
+          # SLO: getAccountInfo (cache hit) p99 < 50ms.
+          expr: histogram_quantile(0.99, sum by (le) (rate(rustag_rpc_latency_ms_bucket{method="getAccountInfo",cache="hit"}[5m]))) > 50
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: "getAccountInfo cache-hit p99 over 50ms SLO"
+
+        - alert: OracleStalenessHigh
+          # SLO: oracle price staleness p99 < 2s.
+          expr: histogram_quantile(0.99, sum by (le) (rate(rustag_oracle_staleness_seconds_bucket[5m]))) > 2
+          for: 5m
+          labels: { severity: warning }
+          annotations:
+            summary: "Oracle staleness p99 over 2s - is the realtime stream connected?"
+
+    - name: rustag-dependencies
+      rules:
+        - alert: RealtimeStreamDisconnected
+          expr: min(rustag_realtime_stream_connected) == 0
+          for: 1m
+          labels: { severity: warning }
+          annotations:
+            summary: "Yellowstone/realtime mirror disconnected - falling back to polling freshness"
+
+        - alert: MainnetFetchErrorRateHigh
+          expr: |
+            sum(rate(rustag_mainnet_fetch_errors_total[5m]))
+              / clamp_min(sum(rate(rustag_mainnet_fetch_total[5m])), 1) > 0.1
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: "Over 10% of mainnet fetches are failing - upstream RPC degraded"
+
+        - alert: CrossTenantAccessDenied
+          # SLO: zero cross-tenant access. ANY occurrence pages immediately.
+          expr: increase(rustag_cross_tenant_denied_total[5m]) > 0
+          for: 0m
+          labels: { severity: critical }
+          annotations:
+            summary: "Cross-tenant access was attempted and blocked - investigate immediately"
+            runbook: "A denial is the guard working, but a spike means someone is probing. Correlate by tenant_id."

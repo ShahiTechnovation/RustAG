@@ -1,10 +1,10 @@
-//! `rustag attest` — produce a signed, verifiable attestation of the state a
+//! `rustag attest` - produce a signed, verifiable attestation of the state a
 //! stagenet was tested against (Phase 3, P3.1).
 //!
 //! Operates offline against the persisted store: it commits to the exact account
 //! set RustAG holds for the stagenet, signs the manifest with a local attester
 //! key, and writes a `*.attestation.json` artifact that anyone can verify with
-//! `rustag verify` — no server, no network.
+//! `rustag verify` - no server, no network.
 
 use std::collections::BTreeSet;
 use std::path::PathBuf;
@@ -51,7 +51,7 @@ pub async fn run(args: AttestArgs) -> Result<()> {
 
     let accounts = load_all_accounts(&store, &record.id).await?;
     if accounts.is_empty() {
-        warn("this stagenet has no accounts yet — the attestation will commit to an empty state");
+        warn("this stagenet has no accounts yet - the attestation will commit to an empty state");
     }
     let outcomes = load_outcomes(&store, &record.id, args.tx_limit).await?;
 

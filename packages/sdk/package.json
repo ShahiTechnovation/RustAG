@@ -1,7 +1,7 @@
 {
   "name": "@rustag/sdk",
   "version": "0.1.0",
-  "description": "TypeScript SDK for RustAG — a mainnet-mirroring Solana staging environment",
+  "description": "TypeScript SDK for RustAG - a mainnet-mirroring Solana staging environment",
   "type": "module",
   "license": "MIT OR Apache-2.0",
   "main": "./src/index.ts",

@@ -19,7 +19,7 @@ async function main() {
 
   const info = await connection.getAccountInfo(RAYDIUM_SOL_USDC_POOL);
   if (!info) {
-    throw new Error("Pool account not found — is mirroring enabled?");
+    throw new Error("Pool account not found - is mirroring enabled?");
   }
 
   console.log(`\nRaydium SOL/USDC pool: ${RAYDIUM_SOL_USDC_POOL.toBase58()}`);

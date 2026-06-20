@@ -1,11 +1,11 @@
-//! RustAG core — a persistent, mainnet-mirroring staging environment for Solana
+//! RustAG core - a persistent, mainnet-mirroring staging environment for Solana
 //! programs, built on [`litesvm`](https://docs.rs/litesvm).
 //!
 //! The central type is [`Stagenet`]: a LiteSVM runtime augmented with
 //!
-//! - **lazy mainnet mirroring** — accounts are fetched from mainnet on first
+//! - **lazy mainnet mirroring** - accounts are fetched from mainnet on first
 //!   access and cached locally ([`Stagenet::pre_load_accounts_for_tx`]),
-//! - **dirty/clean tracking** — locally-modified accounts are frozen from
+//! - **dirty/clean tracking** - locally-modified accounts are frozen from
 //!   mainnet sync, while CLEAN oracle accounts are refreshed in the background,
 //! - **unlimited airdrops** and **state overrides** for fearless testing,
 //! - **SQLite persistence** so a stagenet survives restarts.
