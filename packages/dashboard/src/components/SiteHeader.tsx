@@ -12,6 +12,7 @@ const LINKS = [
   { href: "#features", label: "Features" },
   { href: "#the-mirror", label: "The mirror" },
   { href: "#how-it-works", label: "How it works" },
+  { href: "/docs", label: "Docs" },
 ];
 
 export function SiteHeader() {

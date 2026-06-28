@@ -25,9 +25,9 @@ const COLUMNS = [
   {
     title: "Resources",
     links: [
+      { label: "Docs", href: "/docs" },
       { label: "How it works", href: "#how-it-works" },
       { label: "GitHub", href: "https://github.com/ShahiTechnovation/RustAG" },
-      { label: "Docs", href: "https://github.com/ShahiTechnovation/RustAG" },
     ],
   },
 ];

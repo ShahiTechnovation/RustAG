@@ -212,6 +212,103 @@ h3,
   }
 }
 
+/* ------------------------------------------------------------------ *
+ * Docs long-form prose. :where() keeps specificity at zero so any
+ * utility class on inner components (Callout, CodeBlock, tables) wins.
+ * ------------------------------------------------------------------ */
+@layer components {
+  .doc-content {
+    color: var(--fg-muted);
+    font-size: 0.95rem;
+    line-height: 1.75;
+  }
+  .doc-content :where(p) {
+    margin-block: 1.05rem;
+  }
+  .doc-content :where(strong) {
+    color: var(--fg);
+    font-weight: 600;
+  }
+  .doc-content :where(em) {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 1.05em;
+    color: var(--fg);
+  }
+  .doc-content :where(a:not([class])) {
+    color: var(--fg);
+    text-decoration: underline;
+    text-decoration-color: var(--border-strong);
+    text-underline-offset: 3px;
+    transition: color 0.15s ease, text-decoration-color 0.15s ease;
+  }
+  .doc-content :where(a:not([class]):hover) {
+    color: var(--brand);
+    text-decoration-color: var(--brand);
+  }
+  .doc-content :where(ul) {
+    margin-block: 1.05rem;
+    padding-left: 0.25rem;
+    list-style: none;
+  }
+  .doc-content :where(ol) {
+    margin-block: 1.05rem;
+    padding-left: 1.4rem;
+    list-style: decimal;
+  }
+  .doc-content :where(ol)::marker {
+    color: var(--fg-subtle);
+  }
+  .doc-content :where(ul > li) {
+    position: relative;
+    margin-block: 0.45rem;
+    padding-left: 1.25rem;
+  }
+  .doc-content :where(ul > li)::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.72em;
+    width: 7px;
+    height: 1px;
+    background: var(--brand);
+  }
+  .doc-content :where(ol > li) {
+    margin-block: 0.45rem;
+    padding-left: 0.35rem;
+  }
+  .doc-content :where(li > ul) {
+    margin-block: 0.4rem;
+  }
+  .doc-content :where(:not(pre) > code) {
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    border-radius: 3px;
+    padding: 0.1em 0.4em;
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    color: var(--fg);
+    white-space: nowrap;
+  }
+  .doc-content :where(h2) {
+    margin-top: 2.6rem;
+  }
+  .doc-content :where(h3) {
+    margin-top: 1.9rem;
+  }
+  .doc-content :where(hr) {
+    margin-block: 2.25rem;
+    border: 0;
+    border-top: 1px solid var(--border);
+  }
+  .doc-content :where(blockquote) {
+    margin-block: 1.25rem;
+    border-left: 2px solid var(--brand);
+    padding-left: 1rem;
+    color: var(--fg-muted);
+  }
+}
+
 @keyframes marquee {
   from {
     transform: translateX(0);
