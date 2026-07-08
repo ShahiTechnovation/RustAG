@@ -58,7 +58,14 @@ async function main() {
   if (!res.ok) {
     throw new Error(`simulate failed: ${res.status} ${await res.text()}`);
   }
-  const report = await res.json();
+  const report = (await res.json()) as {
+    label: string;
+    succeeded: number;
+    total: number;
+    failed: number;
+    totalComputeUnits: number;
+    durationMs: number;
+  };
 
   console.log(`\n  Scenario "${report.label}"`);
   console.log(`  ${report.succeeded}/${report.total} succeeded (${report.failed} failed)`);

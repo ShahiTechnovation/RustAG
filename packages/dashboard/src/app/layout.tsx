@@ -41,12 +41,27 @@ export const metadata: Metadata = {
   },
   description:
     "RustAG is Tenderly Virtual TestNets for Solana - a persistent, mainnet-mirroring staging environment. Test against real on-chain state with zero SOL spent and unlimited airdrops.",
-  metadataBase: new URL("https://rustag.dev"),
+  // Prefer an explicit site URL, else the Vercel production URL at build time,
+  // so OG/Twitter image URLs resolve to the real deployed domain.
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ??
+      (process.env.VERCEL_PROJECT_PRODUCTION_URL
+        ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+        : "https://rustag.dev"),
+  ),
   openGraph: {
     title: "RustAG - A staging Solana that mirrors mainnet",
     description:
       "Test Solana programs against real mainnet state. Zero SOL spent. Unlimited airdrops. Time-travel replay, verifiable attestation, MEV simulation.",
     type: "website",
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "RustAG - a staging Solana that mirrors mainnet" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "RustAG - A staging Solana that mirrors mainnet",
+    description:
+      "Test Solana programs against real mainnet state. Zero SOL spent. Unlimited airdrops.",
+    images: ["/og.png"],
   },
 };
 

@@ -5,6 +5,7 @@
   "type": "module",
   "description": "Runnable examples against a live RustAG stagenet",
   "scripts": {
+    "typecheck": "tsc --noEmit",
     "pyth": "tsx pyth-oracle-test.ts",
     "raydium": "tsx raydium-pool-test.ts",
     "jupiter": "tsx jupiter-swap-test.ts",

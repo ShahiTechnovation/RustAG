@@ -1,0 +1,58 @@
+# cargo-deny configuration.
+#
+# The gate: no yanked crates, a permissive-license allowlist, and no unexpected
+# package sources. The advisories we ignore are all unmaintained/low-severity
+# crates deep in the Solana/Agave dependency tree that we do not depend on
+# directly and cannot upgrade until upstream does — each is listed explicitly
+# with a reason, so a *new* advisory fails CI and gets reviewed rather than being
+# silently swallowed. Re-review these whenever the Solana pins move.
+
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+yanked = "deny"
+ignore = [
+  # --- Unmaintained transitive crates from the Solana/Agave tree ---
+  { id = "RUSTSEC-2021-0139", reason = "ansi_term unmaintained; transitive via the Solana/CLI stack, no upgrade available" },
+  { id = "RUSTSEC-2024-0388", reason = "derivative unmaintained; transitive via the Solana/ark stack" },
+  { id = "RUSTSEC-2024-0436", reason = "paste unmaintained; transitive via the Solana stack" },
+  { id = "RUSTSEC-2025-0119", reason = "number_prefix unmaintained; transitive via indicatif" },
+  { id = "RUSTSEC-2025-0141", reason = "bincode 1.x unmaintained; transitive via the Solana serialization stack" },
+  { id = "RUSTSEC-2025-0161", reason = "libsecp256k1 unmaintained; transitive via the Solana secp256k1-recover path" },
+  # --- Low-severity issues in transitive deps, not reachable from RustAG ---
+  { id = "RUSTSEC-2026-0190", reason = "unsound Error::downcast_mut in a transitive dep; not on any RustAG call path" },
+  { id = "RUSTSEC-2026-0204", reason = "crossbeam fmt::Pointer edge case, only when Debug-formatting an invalid Atomic/Shared pointer; RustAG never does this" },
+]
+
+[licenses]
+version = 2
+confidence-threshold = 0.9
+allow = [
+  "MIT",
+  "MIT-0",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "0BSD",
+  "BSD-1-Clause",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "BSL-1.0",
+  "CC0-1.0",
+  "CDLA-Permissive-2.0",
+  "ISC",
+  "Unicode-3.0",
+  "Unlicense",
+  "Zlib",
+]
+
+[bans]
+# The Agave/Solana tree unavoidably pulls several major versions of common
+# crates (rand, thiserror, itertools, ...). Warn, don't fail.
+multiple-versions = "warn"
+wildcards = "warn"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
