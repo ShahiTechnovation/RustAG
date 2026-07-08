@@ -1,32 +1,38 @@
-# Render blueprint for the RustAG public demo backend.
+# Render blueprint for the RustAG public demo backend (FREE tier).
 #
-# One Docker web service running `rustag serve` (create-if-needed -> serve),
-# backed by a persistent disk for the SQLite data plane. Render injects $PORT and
-# routes the public HTTPS URL to it; the code binds the REST API there. The
-# JSON-RPC/WebSocket servers stay on container loopback (not publicly routed).
+# One Docker web service running `rustag serve` (create-if-needed -> serve).
+# Render injects $PORT and routes the public HTTPS URL to it; the code binds the
+# REST API there. The JSON-RPC/WebSocket servers stay on container loopback.
+#
+# Free-tier notes:
+#  - No persistent disk (free plan can't attach one). State lives in the
+#    container's ephemeral filesystem, so it resets on every restart/redeploy -
+#    but `rustag serve` is idempotent: it recreates the stagenet, re-preloads
+#    Pyth/Raydium/token from mainnet, and re-seeds the heartbeat on boot. A fresh
+#    reset also keeps the shared demo from accumulating griefing over time.
+#  - Free services SLEEP after ~15 min with no inbound traffic; the next request
+#    cold-starts (~50s while it boots + preloads). To keep it warm during review,
+#    point a free uptime pinger (UptimeRobot / cron-job.org) at /api/health every
+#    ~10 min. (For an always-on, persistent instance instead, use plan: starter
+#    and re-add a `disk:` mounted at /data - that requires a paid plan.)
 #
 # Deploy:
-#   1. Push this repo to GitHub.
-#   2. Render dashboard -> New -> Blueprint -> pick this repo.
-#   3. Set the RUSTAG_MAINNET_RPC secret (a Helius mainnet URL) when prompted.
-#   4. After it goes live, set NEXT_PUBLIC_RUSTAG_API_URL in Vercel to the
-#      service URL (e.g. https://rustag-demo.onrender.com) and redeploy the site.
+#   1. Render -> New -> Blueprint -> pick this repo (reads render.yaml on main).
+#   2. Set the RUSTAG_MAINNET_RPC secret (a Helius mainnet URL) when prompted.
+#   3. After it's live, set NEXT_PUBLIC_RUSTAG_API_URL in Vercel to the service
+#      URL (e.g. https://rustag-demo.onrender.com) and redeploy the site.
 #
 # Note: the first Docker build compiles the full Solana dependency tree and can
-# take 15-25 min; use a Starter plan or larger (a disk requires a paid plan).
+# take ~15-25 min.
 services:
   - type: web
     name: rustag-demo
     runtime: docker
     dockerfilePath: ./Dockerfile
-    plan: starter
+    plan: free
     region: oregon
     healthCheckPath: /api/health
     autoDeploy: false
-    disk:
-      name: rustag-data
-      mountPath: /data
-      sizeGB: 1
     envVars:
       # Public-demo safety: cap airdrops, disable override/preload/schedule
       # writes (see crates/rustag-rpc/src/state.rs).
