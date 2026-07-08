@@ -1,26 +1,42 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { Globe } from "lucide-react";
 
-import type { SyncState } from "@rustag/sdk";
+import type { AccountInfo, SyncState } from "@rustag/sdk";
 
 import { AnimatedNumber, StatePill } from "@/components/ui";
+import { useAccounts, useStagenet } from "@/lib/hooks";
+import { cn } from "@/lib/cn";
 
-const STATES: SyncState[] = ["Unknown", "Clean", "Dirty", "Pinned"];
+type Row = { label: string; pubkey: string; sol: number; state: SyncState };
 
-const CARDS = [
-  { label: "Pyth · SOL/USD", pubkey: "H6AR…jcW9", base: 147.82, step: 0.42 },
-  { label: "Your wallet", pubkey: "9xQe…F4kP", base: 1000, step: 12 },
-  { label: "Raydium pool", pubkey: "58oQ…b3Rt", base: 84120, step: 240 },
+// Shown only when the demo backend is unreachable/asleep — clearly an
+// illustration, replaced by real mirrored accounts the moment data arrives.
+const FALLBACK: Row[] = [
+  { label: "Oracle · Pyth", pubkey: "H6AR…jcW9", sol: 0.023, state: "Clean" },
+  { label: "Token program", pubkey: "Toke…5DA", sol: 0, state: "Clean" },
+  { label: "Demo wallet", pubkey: "US51…LFx", sol: 5.01, state: "Dirty" },
 ];
 
-function AccountCard({ index, tick }: { index: number; tick: number }) {
-  const card = CARDS[index];
-  const state = STATES[(tick + index) % STATES.length];
-  const balance = card.base + (tick % 4) * card.step;
+function short(pk: string) {
+  return pk.length > 10 ? `${pk.slice(0, 4)}…${pk.slice(-4)}` : pk;
+}
 
+function labelFor(a: AccountInfo): string {
+  switch (a.category) {
+    case "Oracle":
+      return "Oracle · Pyth";
+    case "TokenMint":
+      return "Token mint";
+    case "Program":
+      return "Program";
+    default:
+      return a.executable ? "Program" : "Account";
+  }
+}
+
+function AccountRow({ row, index }: { row: Row; index: number }) {
   return (
     <motion.div
       className="flex items-center justify-between gap-4 rounded-[3px] border border-border bg-subtle px-4 py-3"
@@ -29,14 +45,15 @@ function AccountCard({ index, tick }: { index: number; tick: number }) {
       transition={{ delay: 0.2 + index * 0.12, duration: 0.6 }}
     >
       <div className="min-w-0">
-        <div className="truncate text-xs font-medium text-fg">{card.label}</div>
-        <div className="font-mono text-[11px] text-faint">{card.pubkey}</div>
+        <div className="truncate text-xs font-medium text-fg">{row.label}</div>
+        <div className="font-mono text-[11px] text-faint">{row.pubkey}</div>
       </div>
       <div className="flex items-center gap-3">
         <span className="font-mono text-sm text-fg tabular-nums">
-          <AnimatedNumber value={balance} format={{ maximumFractionDigits: 2 }} />
+          <AnimatedNumber value={row.sol} format={{ maximumFractionDigits: 3 }} />
+          <span className="text-faint"> ◎</span>
         </span>
-        <StatePill state={state} />
+        <StatePill state={row.state} />
       </div>
     </motion.div>
   );
@@ -54,12 +71,18 @@ function Endpoint({ icon, label }: { icon: React.ReactNode; label: string }) {
 }
 
 export function MirrorVisual() {
-  const [tick, setTick] = useState(0);
+  const { data: accounts } = useAccounts(12);
+  const { data: stagenet } = useStagenet();
 
-  useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 1900);
-    return () => clearInterval(id);
-  }, []);
+  const live = !!accounts && accounts.length > 0;
+  const rows: Row[] = live
+    ? accounts.slice(0, 3).map((a) => ({
+        label: labelFor(a),
+        pubkey: short(a.pubkey),
+        sol: a.sol,
+        state: a.syncState,
+      }))
+    : FALLBACK;
 
   return (
     <motion.div
@@ -92,16 +115,21 @@ export function MirrorVisual() {
         </div>
 
         <div className="space-y-2.5">
-          {CARDS.map((_, i) => (
-            <AccountCard key={i} index={i} tick={tick} />
+          {rows.map((row, i) => (
+            <AccountRow key={`${row.pubkey}-${i}`} row={row} index={i} />
           ))}
         </div>
 
         <div className="mt-4 flex items-center justify-between border-t border-border pt-3 text-[11px] text-faint">
           <span className="label !text-faint">Lazy-mirrored from mainnet</span>
           <span className="inline-flex items-center gap-1.5 font-mono uppercase tracking-wider text-faint">
-            <span className="size-1.5 animate-pulse rounded-[1px] bg-brand" />
-            syncing
+            <span
+              className={cn(
+                "size-1.5 rounded-[1px]",
+                live ? "animate-pulse bg-brand" : "bg-faint",
+              )}
+            />
+            {live ? `${(stagenet?.accounts ?? rows.length).toLocaleString()} mirrored` : "syncing"}
           </span>
         </div>
       </div>

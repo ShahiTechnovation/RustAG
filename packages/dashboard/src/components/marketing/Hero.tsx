@@ -3,20 +3,24 @@
 import { motion } from "motion/react";
 import { ArrowUpRight } from "lucide-react";
 
-import { ButtonLink, Eyebrow, GridBackground, RingField } from "@/components/ui";
+import { AnimatedNumber, ButtonLink, Eyebrow, GridBackground, RingField } from "@/components/ui";
+import { useStagenet } from "@/lib/hooks";
 import { MirrorVisual } from "./MirrorVisual";
 import { ParticleField } from "./ParticleField";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
-const STATS = [
-  { value: "0", label: "SOL Spent" },
-  { value: "∞", label: "Airdrops" },
-  { value: "<1s", label: "Oracle" },
-  { value: "100%", label: "Accurate" },
-];
-
 export function Hero() {
+  const { data, isError } = useStagenet();
+  const live = !!data && !isError;
+  // Two honest constants + two live figures pulled from the demo backend.
+  const stats: { value: React.ReactNode; label: string }[] = [
+    { value: "0", label: "SOL spent" },
+    { value: "∞", label: "Airdrops" },
+    { value: live ? <AnimatedNumber value={data.accounts} /> : "—", label: "Accounts mirrored" },
+    { value: live ? <AnimatedNumber value={data.slot} /> : "—", label: "Slot" },
+  ];
+
   return (
     <section className="relative overflow-hidden px-6 pb-24 pt-36 sm:pt-40">
       <RingField />
@@ -61,12 +65,12 @@ export function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease, delay: 0.19 }}
         >
-          <ButtonLink href="/early-access" size="lg" className="group">
-            Request early access
+          <ButtonLink href="/app" size="lg" className="group">
+            Open the live demo
             <ArrowUpRight size={18} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </ButtonLink>
-          <ButtonLink href="#features" size="lg" variant="secondary" className="group">
-            Explore features
+          <ButtonLink href="/early-access" size="lg" variant="secondary" className="group">
+            Request early access
             <ArrowUpRight size={16} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </ButtonLink>
         </motion.div>
@@ -77,9 +81,9 @@ export function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease, delay: 0.26 }}
         >
-          {STATS.map((s) => (
+          {stats.map((s) => (
             <div key={s.label} className="flex flex-col items-center gap-1 px-4 py-5">
-              <span className="font-display text-3xl font-bold tracking-tight text-fg sm:text-4xl">
+              <span className="font-display text-3xl font-bold tracking-tight text-fg tabular-nums sm:text-4xl">
                 {s.value}
               </span>
               <span className="label">{s.label}</span>

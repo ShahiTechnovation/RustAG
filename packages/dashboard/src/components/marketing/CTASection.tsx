@@ -13,11 +13,18 @@ export function CTASection() {
               Spin up your <span className="font-serif italic text-brand">mirror</span>.
             </h2>
             <p className="mx-auto mt-5 max-w-xl text-pretty text-base leading-relaxed text-muted">
-              RustAG is in private beta. Join the early-access list and we&apos;ll reach out as we
-              open up your staging Solana.
+              RustAG is open source, and a live mainnet-mirroring demo is running right now. Open it,
+              read the code, or join the early-access list.
             </p>
             <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-              <ButtonLink href="/early-access" size="lg" className="group">
+              <ButtonLink href="/app" size="lg" className="group">
+                Open the live demo
+                <ArrowUpRight
+                  size={18}
+                  className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                />
+              </ButtonLink>
+              <ButtonLink href="/early-access" size="lg" variant="secondary" className="group">
                 Request early access
                 <ArrowUpRight
                   size={18}

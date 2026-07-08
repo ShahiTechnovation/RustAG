@@ -2,6 +2,13 @@
 
 **A persistent, mainnet-mirroring staging environment for Solana programs.**
 
+> **▶ Try it live:** a public demo is running at **https://rustag-demo.onrender.com** —
+> e.g. [`/api/stagenet`](https://rustag-demo.onrender.com/api/stagenet) returns real
+> mainnet-mirrored state (Pyth, token programs, live slot). The Next.js dashboard drives
+> it visually. The demo runs in a **capped-interactive** mode: reads, capped airdrops, and
+> `simulate` are live; `override`/`preload`/schedule writes are disabled. (Free-tier
+> hosting — the first request after idle may cold-start for ~50s.)
+
 RustAG is the Solana equivalent of what Tenderly Virtual TestNets are for EVM - but
 built natively for the SVM account model. It wraps [LiteSVM](https://github.com/LiteSVM/litesvm)
 with a **lazy mainnet account mirror**, so your tests run against *real* Pyth prices,
@@ -93,6 +100,7 @@ NEXT_PUBLIC_RUSTAG_API_URL=http://localhost:9000 pnpm --filter dashboard dev
 | -------------------------------------------------- | ---------------------------------------- |
 | `rustag create <name>`                             | Register a new stagenet.                 |
 | `rustag start [name] [--preload jupiter pyth ...]` | Run the JSON-RPC, WebSocket, REST servers. |
+| `rustag serve [name] [--preload ...]`              | Create-if-needed, then serve — the one-shot entrypoint for hosted/containerized demos. |
 | `rustag stop [-s name]`                            | Stop a running stagenet.                 |
 | `rustag status [-s name]`                          | Show counts, ports, running state.       |
 | `rustag list`                                      | List all stagenets.                      |
@@ -126,9 +134,13 @@ Requires Rust 1.96+ (pinned in `rust-toolchain.toml`), Node 22+, and pnpm 10+.
 
 ## Status & roadmap
 
-Phase 1 (this repo) is a working local MVP: lazy mirror, dirty/clean tracking,
-unlimited airdrops, overrides, Solana-compatible RPC, persistence, CLI, SDK, and
-dashboard. Known limitation: executing *arbitrary mainnet programs* end-to-end (such as a
+Phase 1 (this repo) is a working MVP — runnable locally *and* as a hosted
+[live demo](https://rustag-demo.onrender.com) (see the top of this README): lazy mirror,
+dirty/clean tracking, unlimited airdrops, overrides, Solana-compatible RPC, persistence,
+CLI, SDK, and dashboard. A one-shot `rustag serve` entrypoint plus a
+[`render.yaml`](render.yaml) blueprint deploy the demo backend behind a public URL, with a
+`RUSTAG_DEMO_MODE` that caps airdrops and disables destructive writes for safe public
+exposure. Known limitation: executing *arbitrary mainnet programs* end-to-end (such as a
 full Jupiter swap) needs the more complete program-loading planned for Phase 2 - your own
 deployed program reading real mainnet state works today.
 

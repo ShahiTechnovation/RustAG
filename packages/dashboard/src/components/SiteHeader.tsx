@@ -60,10 +60,10 @@ export function SiteHeader() {
           >
             <GitHubIcon size={18} />
           </a>
-          <ButtonLink href="/app" size="sm" variant="secondary" className="hidden sm:inline-flex">
-            Preview app
+          <ButtonLink href="/app" size="sm" className="hidden sm:inline-flex">
+            Live demo
           </ButtonLink>
-          <ButtonLink href="/early-access" size="sm">
+          <ButtonLink href="/early-access" size="sm" variant="secondary">
             Early access
           </ButtonLink>
         </div>

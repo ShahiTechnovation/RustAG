@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
   BadgeCheck,
   CalendarClock,
@@ -13,17 +12,50 @@ import {
   ShieldAlert,
 } from "lucide-react";
 
-import { AnimatedNumber, BentoCard, Reveal, Section, StatePill } from "@/components/ui";
+import type { AccountInfo, SyncState } from "@rustag/sdk";
 
-function AirdropCounter() {
-  const [v, setV] = useState(1000);
-  useEffect(() => {
-    const id = setInterval(() => setV((x) => x + 1000), 1500);
-    return () => clearInterval(id);
-  }, []);
+import { AnimatedNumber, BentoCard, Reveal, Section, StatePill } from "@/components/ui";
+import { useAccounts, useStagenet } from "@/lib/hooks";
+
+function short(pk: string) {
+  return pk.length > 10 ? `${pk.slice(0, 4)}…${pk.slice(-4)}` : pk;
+}
+
+/** Real transaction count from the live demo (mostly the heartbeat's airdrops). */
+function LiveAirdrops() {
+  const { data } = useStagenet();
   return (
     <div className="font-mono text-sm text-brand">
-      <AnimatedNumber value={v} /> <span className="text-faint">SOL airdropped</span>
+      <AnimatedNumber value={data?.transactions ?? 0} />{" "}
+      <span className="text-faint">txs on the live demo</span>
+    </div>
+  );
+}
+
+const FALLBACK_PILLS: { pubkey: string; state: SyncState }[] = [
+  { pubkey: "H6AR…jcW9", state: "Clean" },
+  { pubkey: "US51…LFx", state: "Dirty" },
+  { pubkey: "Toke…5DA", state: "Clean" },
+];
+
+/** Real mirrored accounts (pubkey + Clean/Dirty/Pinned) from the live demo. */
+function MirrorPills() {
+  const { data } = useAccounts(6);
+  const pills =
+    data && data.length
+      ? data.slice(0, 3).map((a: AccountInfo) => ({ pubkey: short(a.pubkey), state: a.syncState }))
+      : FALLBACK_PILLS;
+  return (
+    <div className="mt-2 space-y-2">
+      {pills.map((p, i) => (
+        <div
+          key={`${p.pubkey}-${i}`}
+          className="flex items-center justify-between rounded-[3px] border border-border bg-subtle px-3 py-2 text-xs"
+        >
+          <span className="font-mono text-faint">{p.pubkey}</span>
+          <StatePill state={p.state} />
+        </div>
+      ))}
     </div>
   );
 }
@@ -46,22 +78,7 @@ export function FeatureBento() {
             icon={<Layers size={20} />}
             title="Lazy mainnet mirror"
             description="Accounts are fetched from mainnet on first access, cached, and tracked through a Clean → Dirty → Pinned lifecycle. Replay mainnet on a local SVM - no block hash, no fork required."
-            media={
-              <div className="mt-2 space-y-2">
-                <div className="flex items-center justify-between rounded-[3px] border border-border bg-subtle px-3 py-2 text-xs">
-                  <span className="font-mono text-faint">H6AR…jcW9</span>
-                  <StatePill state="Clean" />
-                </div>
-                <div className="flex items-center justify-between rounded-[3px] border border-border bg-subtle px-3 py-2 text-xs">
-                  <span className="font-mono text-faint">9xQe…F4kP</span>
-                  <StatePill state="Dirty" />
-                </div>
-                <div className="flex items-center justify-between rounded-[3px] border border-border bg-subtle px-3 py-2 text-xs">
-                  <span className="font-mono text-faint">58oQ…b3Rt</span>
-                  <StatePill state="Pinned" />
-                </div>
-              </div>
-            }
+            media={<MirrorPills />}
           />
 
           <BentoCard
@@ -78,7 +95,7 @@ export function FeatureBento() {
             accent="var(--brand)"
             title="Unlimited free airdrops"
             description="No faucet limits. Credit any wallet instantly with zero mainnet SOL spent."
-            media={<AirdropCounter />}
+            media={<LiveAirdrops />}
           />
 
           <BentoCard
