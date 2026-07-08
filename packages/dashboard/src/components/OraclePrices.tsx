@@ -64,7 +64,7 @@ export function OraclePrices({ compact = false }: { compact?: boolean }) {
           Pyth
         </span>
       </div>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {rows.map((d) => (
           <div key={d.symbol} className="rounded-[3px] border border-border bg-subtle px-3 py-3 text-center">
             <div className="label justify-center text-faint">{d.symbol}</div>

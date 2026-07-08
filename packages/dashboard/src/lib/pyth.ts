@@ -17,6 +17,7 @@ export const PYTH_FEEDS = [
   { symbol: "SOL/USD", pubkey: "7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE" },
   { symbol: "ETH/USD", pubkey: "42amVS4KgzR9rA28tkVYqVXjq9Qa8dcZQMbH5EYFX6XC" },
   { symbol: "USDC/USD", pubkey: "Dpw1EAVrSB1ibxiDQyTAW6Zip3J4Btk2x4SgApQCeFbX" },
+  { symbol: "USDT/USD", pubkey: "HT2PLQBcG5EiCcNSaMHAjSgd9F98ecpATbk4Sk5oYuM" },
 ] as const;
 
 /** Anchor account discriminator = sha256("account:PriceUpdateV2")[0..8]. */
