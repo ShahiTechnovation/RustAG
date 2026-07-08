@@ -17,6 +17,10 @@ export interface StagenetInfo {
   accounts: number;
   transactions: number;
   dirtyAccounts: number;
+  /** True when the server runs as a public, capped-interactive demo: reads,
+   * capped airdrops, and simulate are live; override/preload/schedule writes
+   * are disabled. Absent on older backends. */
+  demoMode?: boolean;
 }
 
 /** A single account record. */
