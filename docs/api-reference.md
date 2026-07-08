@@ -89,5 +89,5 @@ await client.preload(["jupiter", "pyth", "raydium"]);
 
 ## Preload targets
 
-`jupiter`, `pyth`, `switchboard`, `raydium`, `orca`, `marinade`, `spl-token`,
+`jupiter`, `pyth`, `raydium`, `orca`, `marinade`, `spl-token`,
 `token-2022`, `metaplex`. Run `rustag preload -s <name>` with no args to list them.

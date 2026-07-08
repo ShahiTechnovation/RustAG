@@ -86,7 +86,7 @@ Background: re-fetch Clean ORACLE accounts every 30s
       />
       <p>
         A background task re-fetches <code>Clean</code> <strong>oracle</strong> accounts every 30 seconds
-        (the default interval), so Pyth/Switchboard prices stay fresh. In the transaction path, a pre-load
+        (the default interval), so Pyth prices stay fresh. In the transaction path, a pre-load
         step batch-fetches any static account key that is not already loaded and not <code>Dirty</code>,
         loading it into LiteSVM as <code>Clean</code>; fetch failures are logged and tolerated.
       </p>
@@ -205,7 +205,7 @@ Background: re-fetch Clean ORACLE accounts every 30s
       <p>
         Oracle accounts are the one category RustAG actively keeps fresh. A background loop
         (<code>spawn_oracle_sync</code>) re-fetches <code>Clean</code> oracle accounts on the default 30s
-        interval (clamped to a 1s minimum), so Pyth/Switchboard prices don&apos;t go stale under your tests.
+        interval (clamped to a 1s minimum), so Pyth prices don&apos;t go stale under your tests.
       </p>
       <p>
         <PhaseBadge phase={2} /> A <strong>push</strong> path over the standard <code>accountSubscribe</code>{" "}

@@ -9,7 +9,7 @@ use tokio::task::JoinHandle;
 use crate::stagenet::Stagenet;
 
 /// Spawn a background task that re-fetches CLEAN oracle accounts from mainnet on
-/// the given interval, keeping Pyth/Switchboard prices fresh. DIRTY accounts are
+/// the given interval, keeping Pyth prices fresh. DIRTY accounts are
 /// never touched. The task runs until its [`JoinHandle`] is aborted.
 pub fn spawn_oracle_sync(stagenet: Arc<RwLock<Stagenet>>, interval: Duration) -> JoinHandle<()> {
     tokio::spawn(async move {

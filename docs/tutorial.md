@@ -14,7 +14,7 @@ RustAG runs a **stagenet** — a local Solana environment that *mirrors mainnet 
   caches it, and marks it `Clean`.
 - When a transaction **writes** an account, RustAG marks it `Dirty` and freezes it from
   mainnet sync forever.
-- A background task refreshes `Clean` **oracle** accounts (Pyth/Switchboard) every 30s.
+- A background task refreshes `Clean` **oracle** accounts (Pyth) every 30s.
 - You can **airdrop unlimited SOL**, **override** any account, and point any Solana client
   at it as if it were a real cluster.
 
@@ -233,14 +233,13 @@ Run with no arguments to list the available targets:
 
 ```bash
 rustag preload -s my-defi-project
-#   • available targets: jupiter, pyth, switchboard, raydium, orca, marinade, spl-token, token-2022, metaplex
+#   • available targets: jupiter, pyth, raydium, orca, marinade, spl-token, token-2022, metaplex
 ```
 
 | Target | Loads |
 | ------ | ----- |
 | `jupiter` | Jupiter V6 aggregator program |
-| `pyth` | Pyth SOL/USD, ETH/USD, USDC/USD price feeds |
-| `switchboard` | Switchboard USDT/USD feed |
+| `pyth` | Pyth SOL/USD, ETH/USD, USDC/USD, USDT/USD price feeds |
 | `raydium` | Raydium AMM v4 program |
 | `orca` | Orca Whirlpools program |
 | `marinade` | Marinade staking program |

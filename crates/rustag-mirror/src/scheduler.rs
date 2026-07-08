@@ -10,7 +10,7 @@ use std::time::Duration;
 /// How often each class of CLEAN account is re-fetched from mainnet.
 #[derive(Debug, Clone, Copy)]
 pub struct SyncIntervals {
-    /// Oracle accounts (Pyth/Switchboard) - kept fresh aggressively.
+    /// Oracle accounts (Pyth) - kept fresh aggressively.
     pub oracle: Duration,
     /// Everything else - synced lazily.
     pub default: Duration,

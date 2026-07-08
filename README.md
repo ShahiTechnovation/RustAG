@@ -31,7 +31,7 @@ When a transaction reads account `X`:
 2. **Miss?** Fetch it from mainnet → cache it → mark it `Clean` → return it.
 3. **A transaction writes `X`?** Mark it `Dirty` - it is now frozen from mainnet sync forever.
 
-A background task re-fetches `Clean` **oracle** accounts every 30s, so Pyth/Switchboard
+A background task re-fetches `Clean` **oracle** accounts every 30s, so Pyth
 prices stay fresh. `Dirty` and `Pinned` accounts are never overwritten. This is how
 "mainnet replay" works on the SVM, where (unlike EVM) there is no block to fork from.
 

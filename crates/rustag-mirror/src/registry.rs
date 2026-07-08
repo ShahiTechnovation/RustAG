@@ -28,10 +28,12 @@ const METAPLEX_CORE: &str = "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d";
 // v2 "price accounts" (magic 0xa1b2c3d4) were deprecated and STOPPED UPDATING in
 // Nov 2024, so mirroring them froze the dashboard price - always use the pull
 // feeds. See the client-side decoder in packages/dashboard/src/lib/pyth.ts.
+// Switchboard's v2 USDT/USD feed was retired the same way (dead upstream since
+// Apr 2026, sparse + failing crank txs), so USDT/USD is now a Pyth pull feed too.
 const PYTH_SOL_USD: &str = "7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE";
 const PYTH_ETH_USD: &str = "42amVS4KgzR9rA28tkVYqVXjq9Qa8dcZQMbH5EYFX6XC";
 const PYTH_USDC_USD: &str = "Dpw1EAVrSB1ibxiDQyTAW6Zip3J4Btk2x4SgApQCeFbX";
-const SWITCHBOARD_USDT_USD: &str = "8SXvChNYFhRq4EZuZvnhjrB3jJRQCv4k3P4W6hesH3Ee";
+const PYTH_USDT_USD: &str = "HT2PLQBcG5EiCcNSaMHAjSgd9F98ecpATbk4Sk5oYuM";
 
 const PROGRAMS: &[&str] = &[
     JUPITER_V6,
@@ -49,7 +51,7 @@ const ORACLES: &[&str] = &[
     PYTH_SOL_USD,
     PYTH_ETH_USD,
     PYTH_USDC_USD,
-    SWITCHBOARD_USDT_USD,
+    PYTH_USDT_USD,
 ];
 
 /// Parse a registry constant. Safe to unwrap: every constant is validated by the
@@ -102,8 +104,8 @@ pub fn resolve(name: &str) -> Option<Vec<(Pubkey, AccountCategory)>> {
             (pk(PYTH_SOL_USD), AccountCategory::Oracle),
             (pk(PYTH_ETH_USD), AccountCategory::Oracle),
             (pk(PYTH_USDC_USD), AccountCategory::Oracle),
+            (pk(PYTH_USDT_USD), AccountCategory::Oracle),
         ]),
-        "switchboard" => one(SWITCHBOARD_USDT_USD, AccountCategory::Oracle),
         _ => None,
     }
 }
@@ -113,7 +115,6 @@ pub fn available() -> &'static [&'static str] {
     &[
         "jupiter",
         "pyth",
-        "switchboard",
         "raydium",
         "orca",
         "marinade",
@@ -138,7 +139,8 @@ mod tests {
     fn resolve_known_names() {
         assert!(resolve("jupiter").is_some());
         assert!(resolve("PYTH").is_some()); // case-insensitive
-        assert_eq!(resolve("pyth").unwrap().len(), 3);
+        assert_eq!(resolve("pyth").unwrap().len(), 4); // SOL/ETH/USDC/USDT
+        assert!(resolve("switchboard").is_none()); // retired: dead v2 feed
         assert!(resolve("nope").is_none());
     }
 

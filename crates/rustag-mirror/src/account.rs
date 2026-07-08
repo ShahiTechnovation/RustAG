@@ -21,7 +21,7 @@ pub struct RemoteAccount {
 /// synced lazily.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum AccountCategory {
-    /// A price feed (Pyth, Switchboard, ...). Synced frequently.
+    /// A price feed (e.g. Pyth). Synced frequently.
     Oracle,
     /// An executable program account.
     Program,

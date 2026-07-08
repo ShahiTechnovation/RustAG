@@ -153,7 +153,7 @@ rustag override -s demo --pubkey <TOKEN_ACCOUNT> --token-balance 1000000`}
       </p>
       <CodeBlock
         lang="text"
-        code={`jupiter  pyth  switchboard  raydium  orca  marinade  spl-token  token-2022  metaplex`}
+        code={`jupiter  pyth  raydium  orca  marinade  spl-token  token-2022  metaplex`}
       />
 
       <H3 id="logs">rustag logs [-s NAME] [-f]</H3>

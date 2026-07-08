@@ -76,7 +76,7 @@ the SQLite registry + a PID file.
   serialized into the `stagenets.config_json` column so a stagenet fully
   reconstructs after restart.
 - ✅ Registry: Jupiter v6, Raydium AMM v4, Orca Whirlpools, Marinade, SPL Token,
-  ATA, Token-2022, Metaplex, Pyth (SOL/ETH/USDC), Switchboard — all verified to
+  ATA, Token-2022, Metaplex, Pyth (SOL/ETH/USDC/USDT) — all verified to
   parse (`registry_pubkeys_parse` test).
 
 ## 6. Quality standards (prompt §11)
