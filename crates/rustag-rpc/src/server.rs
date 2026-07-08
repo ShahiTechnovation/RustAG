@@ -9,6 +9,9 @@ use axum::routing::{get, post};
 use axum::Router;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
+use tower_governor::governor::GovernorConfigBuilder;
+use tower_governor::key_extractor::SmartIpKeyExtractor;
+use tower_governor::GovernorLayer;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
@@ -70,9 +73,34 @@ pub async fn serve(stagenet: Arc<RwLock<Stagenet>>) -> Result<(), RpcServerError
         .route("/", get(crate::ws::handler))
         .with_state(state.clone());
 
-    let rest_app = crate::rest::router(state.clone())
+    let mut rest_app = crate::rest::router(state.clone())
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http());
+
+    // Public-demo hardening: per-client-IP rate limit. Keyed on X-Forwarded-For
+    // (a hosting proxy fronts us, so the socket peer is the proxy, not the
+    // client), falling back to the peer IP locally. Generous enough for the
+    // polling dashboard, tight enough to stop a crawler. Applied only in demo
+    // mode so local development is never throttled.
+    if state.demo_mode {
+        let governor_conf = Arc::new(
+            GovernorConfigBuilder::default()
+                .per_second(5)
+                .burst_size(60)
+                .key_extractor(SmartIpKeyExtractor)
+                .finish()
+                .expect("valid governor rate-limit config"),
+        );
+        // Periodically prune stale per-IP buckets so memory stays bounded.
+        let limiter = governor_conf.limiter().clone();
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(Duration::from_secs(60)).await;
+                limiter.retain_recent();
+            }
+        });
+        rest_app = rest_app.layer(GovernorLayer::new(governor_conf));
+    }
 
     // The REST/API listener is the only one intended for public exposure (the
     // dashboard talks to it). Its bind host is configurable via RUSTAG_BIND_HOST
@@ -107,9 +135,14 @@ async fn serve_app(addr: SocketAddr, app: Router) -> Result<(), RpcServerError> 
     let listener = TcpListener::bind(addr)
         .await
         .map_err(|e| RpcServerError::Bind(addr, e))?;
-    axum::serve(listener, app)
-        .await
-        .map_err(RpcServerError::Serve)?;
+    // Serve with connect info so the rate limiter can fall back to the socket
+    // peer IP when no forwarding header is present (harmless for RPC/WS).
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
+    .map_err(RpcServerError::Serve)?;
     Ok(())
 }
 

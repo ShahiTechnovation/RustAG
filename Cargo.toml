@@ -122,6 +122,8 @@ chrono = { version = "0.4", features = ["serde"] }
 
 # --- Rate limiting ---
 governor = "0.6"
+# Inbound per-IP HTTP rate limiting for the public demo (tower layer over axum).
+tower_governor = { version = "0.8", features = ["axum"] }
 
 # --- Hashing (control-plane API-key digests) ---
 sha2 = "0.10"
