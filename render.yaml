@@ -1,0 +1,43 @@
+# Render blueprint for the RustAG public demo backend.
+#
+# One Docker web service running `rustag serve` (create-if-needed -> serve),
+# backed by a persistent disk for the SQLite data plane. Render injects $PORT and
+# routes the public HTTPS URL to it; the code binds the REST API there. The
+# JSON-RPC/WebSocket servers stay on container loopback (not publicly routed).
+#
+# Deploy:
+#   1. Push this repo to GitHub.
+#   2. Render dashboard -> New -> Blueprint -> pick this repo.
+#   3. Set the RUSTAG_MAINNET_RPC secret (a Helius mainnet URL) when prompted.
+#   4. After it goes live, set NEXT_PUBLIC_RUSTAG_API_URL in Vercel to the
+#      service URL (e.g. https://rustag-demo.onrender.com) and redeploy the site.
+#
+# Note: the first Docker build compiles the full Solana dependency tree and can
+# take 15-25 min; use a Starter plan or larger (a disk requires a paid plan).
+services:
+  - type: web
+    name: rustag-demo
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    region: oregon
+    healthCheckPath: /api/health
+    autoDeploy: false
+    disk:
+      name: rustag-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      # Public-demo safety: cap airdrops, disable override/preload/schedule
+      # writes (see crates/rustag-rpc/src/state.rs).
+      - key: RUSTAG_DEMO_MODE
+        value: "1"
+      # Only the REST API binds this; RPC/WS stay on loopback.
+      - key: RUSTAG_BIND_HOST
+        value: 0.0.0.0
+      - key: RUSTAG_LOG_FORMAT
+        value: json
+      # The upstream mainnet RPC (Helius/Alchemy/Triton). Set as a secret in the
+      # Render dashboard - never commit the key. Redacted on all read paths.
+      - key: RUSTAG_MAINNET_RPC
+        sync: false

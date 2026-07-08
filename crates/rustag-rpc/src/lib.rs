@@ -14,4 +14,4 @@ mod ws;
 
 pub use error::RpcServerError;
 pub use server::{serve, ServerAddrs};
-pub use state::AppState;
+pub use state::{demo_mode_enabled, AppState};

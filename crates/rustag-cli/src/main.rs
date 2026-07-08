@@ -41,6 +41,8 @@ enum Command {
     Create(commands::create::CreateArgs),
     /// Start a stagenet (runs the JSON-RPC, WebSocket, and REST servers).
     Start(commands::start::StartArgs),
+    /// Create-if-needed then serve - the one-shot entrypoint for hosted demos.
+    Serve(commands::serve::ServeArgs),
     /// Stop a running stagenet (best-effort via its PID file).
     Stop(commands::manage::StopArgs),
     /// Show a stagenet's status.
@@ -80,6 +82,7 @@ async fn main() -> anyhow::Result<()> {
     match cli.command {
         Command::Create(args) => commands::create::run(args).await,
         Command::Start(args) => commands::start::run(args).await,
+        Command::Serve(args) => commands::serve::run(args).await,
         Command::Stop(args) => commands::manage::stop(args).await,
         Command::Status(args) => commands::manage::status(args).await,
         Command::List => commands::manage::list().await,

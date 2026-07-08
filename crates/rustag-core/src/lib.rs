@@ -20,6 +20,7 @@ pub mod metrics;
 mod realtime;
 mod stagenet;
 mod sync;
+mod util;
 
 pub use account_state::{AccountEntry, AccountSync};
 pub use account_store::{AccountStore, ScheduleRecord, StagenetRecord, TransactionRecord};
@@ -29,6 +30,7 @@ pub use metrics::{MetricPoint, MetricsSnapshot};
 pub use realtime::spawn_realtime_apply;
 pub use stagenet::{AccountOverride, Stagenet, TxOutcome};
 pub use sync::{spawn_metrics_sampler, spawn_oracle_sync};
+pub use util::redact_url;
 
 // Re-export the mirror surface so downstream crates have a single dependency.
 #[cfg(feature = "realtime")]

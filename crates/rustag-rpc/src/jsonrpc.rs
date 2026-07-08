@@ -14,7 +14,7 @@ use serde_json::{json, Value};
 use solana_pubkey::Pubkey;
 use solana_transaction::versioned::VersionedTransaction;
 
-use crate::state::AppState;
+use crate::state::{AppState, MAX_DEMO_AIRDROP_LAMPORTS};
 use crate::types::{encode_account_base64, with_context, API_VERSION, GENESIS_HASH};
 
 /// A JSON-RPC error `(code, message)`.
@@ -315,6 +315,17 @@ async fn request_airdrop(state: &AppState, params: &[Value]) -> RpcResult {
         .get(1)
         .and_then(|v| v.as_u64())
         .ok_or((INVALID_PARAMS, "expected lamports at param 1".to_string()))?;
+    // Same cap as the REST path so the standard Solana `requestAirdrop` RPC is
+    // not a way around the public-demo airdrop limit.
+    if state.demo_mode && lamports > MAX_DEMO_AIRDROP_LAMPORTS {
+        return Err((
+            INVALID_PARAMS,
+            format!(
+                "airdrop is capped at {} SOL on the public demo",
+                MAX_DEMO_AIRDROP_LAMPORTS / 1_000_000_000
+            ),
+        ));
+    }
     let mut sn = state.stagenet.write().await;
     let signature = sn
         .airdrop_with_record(&pubkey, lamports)
@@ -454,6 +465,29 @@ mod tests {
         assert!(sig.is_string());
         let bal = route(&st, "getBalance", &[json!(pk)]).await.unwrap();
         assert_eq!(bal["value"], json!(1_000_000_000u64));
+    }
+
+    #[tokio::test]
+    async fn demo_mode_caps_airdrop() {
+        let mut st = state().await;
+        st.demo_mode = true;
+        let pk = Keypair::new().pubkey().to_string();
+        // Over the cap: rejected.
+        assert!(route(
+            &st,
+            "requestAirdrop",
+            &[json!(pk), json!(MAX_DEMO_AIRDROP_LAMPORTS + 1)]
+        )
+        .await
+        .is_err());
+        // At the cap: allowed.
+        assert!(route(
+            &st,
+            "requestAirdrop",
+            &[json!(pk), json!(MAX_DEMO_AIRDROP_LAMPORTS)]
+        )
+        .await
+        .is_ok());
     }
 
     #[tokio::test]

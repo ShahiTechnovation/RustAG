@@ -12,7 +12,9 @@ use anyhow::{bail, Result};
 use clap::Args;
 use console::style;
 
-use super::{config_from_record, data_dir, db_path, fail, info, is_running, ok, open_store, warn};
+use super::{
+    config_from_record, data_dir, db_path, fail, info, is_running, ok, open_store, redact_url, warn,
+};
 use rustag_core::StagenetConfig;
 
 #[derive(Args)]
@@ -208,30 +210,9 @@ fn port_free(port: u16) -> bool {
     TcpListener::bind(("127.0.0.1", port)).is_ok()
 }
 
-/// Drop the query string from a URL before printing it - mainnet/WS endpoints
-/// carry `?api-key=...`, which must never reach logs or terminal output.
-fn redact_url(url: &str) -> String {
-    match url.split_once('?') {
-        Some((base, _)) => format!("{base}?<redacted>"),
-        None => url.to_string(),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn redacts_query_string() {
-        assert_eq!(
-            redact_url("https://rpc.example.com/?api-key=secret123"),
-            "https://rpc.example.com/?<redacted>"
-        );
-        assert_eq!(
-            redact_url("https://api.mainnet-beta.solana.com"),
-            "https://api.mainnet-beta.solana.com"
-        );
-    }
 
     #[test]
     fn port_free_detects_a_bound_port() {

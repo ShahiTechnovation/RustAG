@@ -3186,6 +3186,7 @@ dependencies = [
  "rustag-compression",
  "rustag-core",
  "rustag-rpc",
+ "rustag-scheduler",
  "rustag-sim",
  "serde",
  "serde_json",

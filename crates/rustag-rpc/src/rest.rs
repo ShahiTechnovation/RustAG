@@ -16,7 +16,7 @@ use uuid::Uuid;
 
 use rustag_core::AccountOverride;
 
-use crate::state::AppState;
+use crate::state::{AppState, MAX_DEMO_AIRDROP_LAMPORTS};
 use crate::types::encode_account_rich;
 
 /// Build the REST router (mounted under `/api`).
@@ -45,6 +45,16 @@ fn server_err<E: std::fmt::Display>(e: E) -> (StatusCode, String) {
     (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
 }
 
+/// 403 for a route disabled while the server runs in public-demo mode. Keeps the
+/// shared stagenet un-griefable and the upstream RPC key un-drainable without
+/// blocking the read + airdrop + simulate experience a reviewer actually wants.
+fn demo_forbidden(action: &str) -> (StatusCode, String) {
+    (
+        StatusCode::FORBIDDEN,
+        format!("{action} is disabled on the public demo (reads, capped airdrops, and simulate stay available)"),
+    )
+}
+
 async fn health() -> impl IntoResponse {
     Json(json!({ "status": "ok" }))
 }
@@ -69,10 +79,16 @@ async fn stagenet_info(State(state): State<AppState>) -> ApiResult {
         "rpcUrl": config.rpc_url(),
         "wsUrl": config.ws_url(),
         "mirrorEnabled": config.mirror_enabled,
-        "mainnetRpc": config.mainnet_rpc,
+        // Redact the upstream RPC credential: `mainnet_rpc` carries the paid
+        // Helius/Alchemy `?api-key=` (or a path-embedded key) and this response
+        // is served to every browser. Never surface it on a read path.
+        "mainnetRpc": rustag_core::redact_url(&config.mainnet_rpc),
         "accounts": accounts,
         "transactions": transactions,
         "dirtyAccounts": dirty,
+        // Let the dashboard adapt (hide override/preload, show a "live demo"
+        // badge) when the backend is a public, capped-interactive instance.
+        "demoMode": state.demo_mode,
     })))
 }
 
@@ -152,7 +168,18 @@ struct AirdropBody {
 async fn airdrop(State(state): State<AppState>, Json(body): Json<AirdropBody>) -> ApiResult {
     let pubkey = Pubkey::from_str(&body.pubkey)
         .map_err(|_| (StatusCode::BAD_REQUEST, "invalid pubkey".to_string()))?;
+    // `sol as u64` saturates (negative/NaN -> 0, huge -> u64::MAX), so the cap
+    // below also fences off nonsense amounts on the public demo.
     let lamports = (body.sol * 1_000_000_000.0) as u64;
+    if state.demo_mode && lamports > MAX_DEMO_AIRDROP_LAMPORTS {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            format!(
+                "airdrop is capped at {} SOL on the public demo",
+                MAX_DEMO_AIRDROP_LAMPORTS / 1_000_000_000
+            ),
+        ));
+    }
     let mut sn = state.stagenet.write().await;
     let signature = sn
         .airdrop_with_record(&pubkey, lamports)
@@ -175,6 +202,9 @@ async fn override_account(
     State(state): State<AppState>,
     Json(body): Json<OverrideBody>,
 ) -> ApiResult {
+    if state.demo_mode {
+        return Err(demo_forbidden("override"));
+    }
     let pubkey = Pubkey::from_str(&body.pubkey)
         .map_err(|_| (StatusCode::BAD_REQUEST, "invalid pubkey".to_string()))?;
     let mut sn = state.stagenet.write().await;
@@ -202,6 +232,12 @@ struct PreloadBody {
 }
 
 async fn preload(State(state): State<AppState>, Json(body): Json<PreloadBody>) -> ApiResult {
+    // Preload fans out to live mainnet `getMultipleAccounts` calls; on the public
+    // demo it would let anyone drain the upstream RPC key. The demo already
+    // preloads Pyth/Raydium/token at boot, so reviewers never need this route.
+    if state.demo_mode {
+        return Err(demo_forbidden("preload"));
+    }
     let mut entries = Vec::new();
     let mut unknown = Vec::new();
     for name in &body.programs {
@@ -266,6 +302,9 @@ async fn create_schedule(
     State(state): State<AppState>,
     Json(body): Json<CreateScheduleBody>,
 ) -> ApiResult {
+    if state.demo_mode {
+        return Err(demo_forbidden("creating schedules"));
+    }
     let sn = state.stagenet.read().await;
     let store = sn.store();
     let id = sn.id();
@@ -278,6 +317,9 @@ async fn create_schedule(
 }
 
 async fn delete_schedule(State(state): State<AppState>, Path(id): Path<String>) -> ApiResult {
+    if state.demo_mode {
+        return Err(demo_forbidden("deleting schedules"));
+    }
     let uuid = Uuid::parse_str(&id)
         .map_err(|_| (StatusCode::BAD_REQUEST, "invalid schedule id".to_string()))?;
     let sn = state.stagenet.read().await;
@@ -297,6 +339,9 @@ async fn toggle_schedule(
     Path(id): Path<String>,
     Json(body): Json<ToggleBody>,
 ) -> ApiResult {
+    if state.demo_mode {
+        return Err(demo_forbidden("toggling schedules"));
+    }
     let uuid = Uuid::parse_str(&id)
         .map_err(|_| (StatusCode::BAD_REQUEST, "invalid schedule id".to_string()))?;
     let sn = state.stagenet.read().await;

@@ -1,7 +1,7 @@
 //! Server wiring: spins up the JSON-RPC, WebSocket, and REST servers plus the
 //! background oracle-sync task.
 
-use std::net::{Ipv4Addr, SocketAddr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -74,10 +74,18 @@ pub async fn serve(stagenet: Arc<RwLock<Stagenet>>) -> Result<(), RpcServerError
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http());
 
+    // The REST/API listener is the only one intended for public exposure (the
+    // dashboard talks to it). Its bind host is configurable via RUSTAG_BIND_HOST
+    // (set 0.0.0.0 in a container behind a proxy) and its port honors $PORT when
+    // a platform such as Render injects one. The JSON-RPC and WebSocket servers
+    // stay on loopback so a container never exposes them by default; a public
+    // cluster URL is an explicit, separate opt-in.
+    let api_host = api_bind_host();
+    let api_port = resolve_api_port(api_port, std::env::var("PORT").ok());
     let addrs = ServerAddrs {
         rpc: SocketAddr::from((Ipv4Addr::LOCALHOST, rpc_port)),
         ws: SocketAddr::from((Ipv4Addr::LOCALHOST, ws_port)),
-        api: SocketAddr::from((Ipv4Addr::LOCALHOST, api_port)),
+        api: SocketAddr::from((api_host, api_port)),
     };
 
     tracing::info!(
@@ -103,6 +111,34 @@ async fn serve_app(addr: SocketAddr, app: Router) -> Result<(), RpcServerError> 
         .await
         .map_err(RpcServerError::Serve)?;
     Ok(())
+}
+
+/// Resolve the bind IP for the public REST/API listener from `RUSTAG_BIND_HOST`.
+fn api_bind_host() -> IpAddr {
+    parse_bind_host(std::env::var("RUSTAG_BIND_HOST").ok())
+}
+
+/// Parse a bind-host override, defaulting to loopback (safe for local dev). Set
+/// `RUSTAG_BIND_HOST=0.0.0.0` to expose the API from inside a container behind a
+/// platform proxy. An unparseable value falls back to loopback with a warning.
+fn parse_bind_host(raw: Option<String>) -> IpAddr {
+    let loopback = IpAddr::V4(Ipv4Addr::LOCALHOST);
+    match raw {
+        Some(v) if !v.trim().is_empty() => v.trim().parse::<IpAddr>().unwrap_or_else(|_| {
+            tracing::warn!(value = %v, "RUSTAG_BIND_HOST is not a valid IP address; using 127.0.0.1");
+            loopback
+        }),
+        _ => loopback,
+    }
+}
+
+/// Prefer a platform-injected `$PORT` (Render/Heroku expose exactly one port and
+/// route the public URL to it) over the configured API port; fall back to the
+/// configured port when `$PORT` is absent or not a valid `u16`.
+fn resolve_api_port(configured: u16, port_env: Option<String>) -> u16 {
+    port_env
+        .and_then(|p| p.trim().parse::<u16>().ok())
+        .unwrap_or(configured)
 }
 
 /// Start the real-time push mirror (Phase 2). Subscribes to the oracle registry
@@ -151,5 +187,42 @@ async fn spawn_realtime(stagenet: Arc<RwLock<Stagenet>>) {
             "realtime_enabled is set but this build lacks the `realtime` feature; \
              rebuild with `--features realtime` for push updates. Using polling only."
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bind_host_defaults_to_loopback() {
+        assert_eq!(parse_bind_host(None), IpAddr::V4(Ipv4Addr::LOCALHOST));
+        assert_eq!(
+            parse_bind_host(Some("  ".to_string())),
+            IpAddr::V4(Ipv4Addr::LOCALHOST)
+        );
+    }
+
+    #[test]
+    fn bind_host_accepts_any_interface() {
+        assert_eq!(
+            parse_bind_host(Some("0.0.0.0".to_string())),
+            IpAddr::V4(Ipv4Addr::UNSPECIFIED)
+        );
+    }
+
+    #[test]
+    fn bind_host_rejects_garbage_and_falls_back() {
+        assert_eq!(
+            parse_bind_host(Some("not-an-ip".to_string())),
+            IpAddr::V4(Ipv4Addr::LOCALHOST)
+        );
+    }
+
+    #[test]
+    fn api_port_prefers_platform_port_env() {
+        assert_eq!(resolve_api_port(9000, Some("10000".to_string())), 10000);
+        assert_eq!(resolve_api_port(9000, None), 9000);
+        assert_eq!(resolve_api_port(9000, Some("bogus".to_string())), 9000);
     }
 }

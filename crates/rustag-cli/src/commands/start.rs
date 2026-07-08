@@ -79,7 +79,7 @@ pub async fn run(args: StartArgs) -> Result<()> {
     result
 }
 
-async fn preload(sn: &mut Stagenet, targets: &[String]) {
+pub(crate) async fn preload(sn: &mut Stagenet, targets: &[String]) {
     let mut entries = Vec::new();
     for name in targets {
         match registry::resolve(name) {

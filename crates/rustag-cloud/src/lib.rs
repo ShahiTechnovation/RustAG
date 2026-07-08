@@ -248,6 +248,13 @@ fn stagenet_json(rec: &CloudStagenet, config: &CloudConfig) -> Value {
     let base = public_base(config);
     let mut value = serde_json::to_value(rec).unwrap_or_else(|_| json!({}));
     if let Some(obj) = value.as_object_mut() {
+        // `CloudStagenet` serializes `mainnet_rpc` verbatim (threat-model asset
+        // #4: every tenant's upstream RPC credential). Redact it on the read
+        // path so create/get/list responses never echo the `?api-key=`.
+        obj.insert(
+            "mainnetRpc".into(),
+            json!(rustag_core::redact_url(&rec.mainnet_rpc)),
+        );
         obj.insert(
             "rpcUrl".into(),
             json!(format!("http://{base}/{}/rpc", rec.slug)),
@@ -299,6 +306,38 @@ mod tests {
         assert_eq!(slugify("  Hello!! World  "), "hello-world");
         assert_eq!(slugify("already-good"), "already-good");
         assert_eq!(slugify("!!!"), "");
+    }
+
+    /// Credential-leak regression (docs/threat-model.md asset #4): a stagenet
+    /// API response must never echo the tenant's upstream RPC key. Guards the
+    /// `mainnet_rpc` field that `CloudStagenet` serializes verbatim.
+    #[test]
+    fn stagenet_json_redacts_mainnet_rpc() {
+        let rec = CloudStagenet {
+            id: uuid::Uuid::new_v4(),
+            tenant_id: uuid::Uuid::new_v4(),
+            slug: "demo".to_string(),
+            name: "demo".to_string(),
+            status: "running".to_string(),
+            rpc_port: 20000,
+            ws_port: 20001,
+            api_port: 20002,
+            mainnet_rpc: "https://mainnet.helius-rpc.com/?api-key=SUPER_SECRET".to_string(),
+            pid: None,
+            work_dir: "/tmp/demo".to_string(),
+            created_at: chrono::Utc::now(),
+            last_active: None,
+        };
+        let value = stagenet_json(&rec, &CloudConfig::from_env());
+        let mainnet = value
+            .get("mainnetRpc")
+            .and_then(|v| v.as_str())
+            .expect("mainnetRpc field present");
+        assert!(
+            !mainnet.contains("api-key") && !mainnet.contains("SUPER_SECRET"),
+            "response leaked the upstream RPC credential: {mainnet}"
+        );
+        assert_eq!(mainnet, "https://mainnet.helius-rpc.com");
     }
 
     #[tokio::test]

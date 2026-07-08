@@ -20,6 +20,7 @@ realtime = ["rustag-rpc/realtime"]
 [dependencies]
 rustag-core.workspace = true
 rustag-rpc.workspace = true
+rustag-scheduler.workspace = true
 rustag-attest.workspace = true
 rustag-compression.workspace = true
 rustag-sim.workspace = true
