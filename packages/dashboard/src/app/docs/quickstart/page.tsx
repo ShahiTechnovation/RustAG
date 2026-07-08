@@ -153,7 +153,7 @@ rustag logs    -s demo --follow               # live transaction feed`}
       <CodeBlock
         lang="bash"
         code={`curl -s http://127.0.0.1:8899 -H 'content-type: application/json' \\
-  -d '{"jsonrpc":"2.0","id":1,"method":"getAccountInfo","params":["H6ARHf6YXhGYeQfUzQNGk6rDNnLBQKrenN712K4AQJEG",{"encoding":"base64"}]}'`}
+  -d '{"jsonrpc":"2.0","id":1,"method":"getAccountInfo","params":["7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE",{"encoding":"base64"}]}'`}
       />
 
       <H2 id="connect">Connect your tooling</H2>

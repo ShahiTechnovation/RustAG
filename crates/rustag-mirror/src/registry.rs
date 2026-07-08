@@ -22,9 +22,15 @@ const METAPLEX_TOKEN_METADATA: &str = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x
 const METAPLEX_CORE: &str = "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d";
 
 // --- Oracle price feeds ----------------------------------------------------
-const PYTH_SOL_USD: &str = "H6ARHf6YXhGYeQfUzQNGk6rDNnLBQKrenN712K4AQJEG";
-const PYTH_ETH_USD: &str = "JBu1AL4obBcCMqKBBxhpWCNUt136ijcuMZLFvTP7iWdB";
-const PYTH_USDC_USD: &str = "Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD";
+// Pyth pull-oracle "price feed accounts" (Anchor `PriceUpdateV2`, owned by the
+// receiver program rec5EKMGg6MxZYaMdyBfgwp4d5rB9T1VQH5pJv5LtFJ) - the sponsored
+// feeds the Pyth Data Association keeps continuously updated. NOTE: the legacy
+// v2 "price accounts" (magic 0xa1b2c3d4) were deprecated and STOPPED UPDATING in
+// Nov 2024, so mirroring them froze the dashboard price - always use the pull
+// feeds. See the client-side decoder in packages/dashboard/src/lib/pyth.ts.
+const PYTH_SOL_USD: &str = "7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE";
+const PYTH_ETH_USD: &str = "42amVS4KgzR9rA28tkVYqVXjq9Qa8dcZQMbH5EYFX6XC";
+const PYTH_USDC_USD: &str = "Dpw1EAVrSB1ibxiDQyTAW6Zip3J4Btk2x4SgApQCeFbX";
 const SWITCHBOARD_USDT_USD: &str = "8SXvChNYFhRq4EZuZvnhjrB3jJRQCv4k3P4W6hesH3Ee";
 
 const PROGRAMS: &[&str] = &[

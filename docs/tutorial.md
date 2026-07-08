@@ -286,7 +286,7 @@ rustag airdrop -s demo GsbwXfJraMomNxBcjK8h8gPbBzqVuU7m5jbB1c9Wp4Lp 1000
 # 2. Read a REAL mainnet oracle through the stagenet
 curl -s http://127.0.0.1:8899 -H 'content-type: application/json' -d '{
   "jsonrpc":"2.0","id":1,"method":"getAccountInfo",
-  "params":["H6ARHf6YXhGYeQfUzQNGk6rDNnLBQKrenN712K4AQJEG",{"encoding":"base64"}]
+  "params":["7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE",{"encoding":"base64"}]
 }'
 
 # 3. Watch transactions live

@@ -9,14 +9,17 @@ import { Connection, PublicKey } from "@solana/web3.js";
 
 const RPC_URL = process.env.RUSTAG_RPC_URL ?? "http://127.0.0.1:8899";
 
-// Pyth SOL/USD price account on mainnet-beta.
-const SOL_USD_PYTH = new PublicKey("H6ARHf6YXhGYeQfUzQNGk6rDNnLBQKrenN712K4AQJEG");
+// Pyth SOL/USD pull-oracle price-feed account on mainnet-beta.
+const SOL_USD_PYTH = new PublicKey("7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE");
 
-/** Decode the aggregate price from a Pyth v2 price account. */
+/** Decode the price from a Pyth `PriceUpdateV2` account (pull oracle). */
 function decodePythPrice(data: Buffer): { price: number; expo: number } {
-  // Pyth v2 layout: expo (i32) @ 20, agg.price (i64) @ 208.
-  const expo = data.readInt32LE(20);
-  const rawPrice = data.readBigInt64LE(208);
+  // 8-byte discriminator, write_authority (32) @ 8, verification_level @ 40
+  // (Full = 1 byte; Partial = tag + u8), then PriceFeedMessage: feed_id (32),
+  // price (i64), conf (u64), exponent (i32). The level's width varies per update.
+  const msg = 41 + (data.readUInt8(40) === 0 ? 1 : 0);
+  const expo = data.readInt32LE(msg + 48);
+  const rawPrice = data.readBigInt64LE(msg + 32);
   const price = Number(rawPrice) * 10 ** expo;
   return { price, expo };
 }
