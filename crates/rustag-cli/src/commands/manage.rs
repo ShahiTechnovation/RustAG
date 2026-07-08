@@ -91,7 +91,10 @@ pub async fn status(args: StatusArgs) -> Result<()> {
     ));
     info(format!("rpc:          {}", config.rpc_url()));
     info(format!("rest api:     {}", api_base(&config)));
-    info(format!("mainnet rpc:  {}", config.mainnet_rpc));
+    info(format!(
+        "mainnet rpc:  {}",
+        super::redact_url(&config.mainnet_rpc)
+    ));
     info(format!(
         "mirror:       {}",
         if config.mirror_enabled {

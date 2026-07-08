@@ -5,12 +5,15 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
 
+use axum::extract::ConnectInfo;
+use axum::http::Request;
 use axum::routing::{get, post};
 use axum::Router;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
+use tower_governor::errors::GovernorError;
 use tower_governor::governor::GovernorConfigBuilder;
-use tower_governor::key_extractor::SmartIpKeyExtractor;
+use tower_governor::key_extractor::KeyExtractor;
 use tower_governor::GovernorLayer;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
@@ -87,7 +90,7 @@ pub async fn serve(stagenet: Arc<RwLock<Stagenet>>) -> Result<(), RpcServerError
             GovernorConfigBuilder::default()
                 .per_second(5)
                 .burst_size(60)
-                .key_extractor(SmartIpKeyExtractor)
+                .key_extractor(TrustedProxyIp)
                 .finish()
                 .expect("valid governor rate-limit config"),
         );
@@ -144,6 +147,41 @@ async fn serve_app(addr: SocketAddr, app: Router) -> Result<(), RpcServerError> 
     .await
     .map_err(RpcServerError::Serve)?;
     Ok(())
+}
+
+/// Rate-limit key = the client IP as observed by the trusted reverse proxy.
+///
+/// Behind a single proxy (Render/Fly/etc.), the **rightmost** `X-Forwarded-For`
+/// entry is the address the proxy saw the connection come from. The leftmost
+/// entries are attacker-supplied and therefore spoofable, so keying on them (as
+/// `SmartIpKeyExtractor` does) lets a client rotate a fake `X-Forwarded-For` to
+/// dodge the limit. Falls back to the socket peer IP when no header is present
+/// (local/no-proxy use).
+#[derive(Clone, Copy)]
+struct TrustedProxyIp;
+
+impl KeyExtractor for TrustedProxyIp {
+    type Key = IpAddr;
+
+    fn extract<T>(&self, req: &Request<T>) -> Result<Self::Key, GovernorError> {
+        if let Some(xff) = req
+            .headers()
+            .get("x-forwarded-for")
+            .and_then(|v| v.to_str().ok())
+        {
+            if let Some(ip) = xff
+                .split(',')
+                .rev()
+                .find_map(|part| part.trim().parse::<IpAddr>().ok())
+            {
+                return Ok(ip);
+            }
+        }
+        req.extensions()
+            .get::<ConnectInfo<SocketAddr>>()
+            .map(|info| info.0.ip())
+            .ok_or(GovernorError::UnableToExtractKey)
+    }
 }
 
 /// Resolve the bind IP for the public REST/API listener from `RUSTAG_BIND_HOST`.
