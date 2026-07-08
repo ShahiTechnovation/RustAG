@@ -116,6 +116,25 @@ async fn list_accounts(State(state): State<AppState>, Query(p): Query<Pagination
 async fn get_account(State(state): State<AppState>, Path(pubkey): Path<String>) -> ApiResult {
     let pubkey = Pubkey::from_str(&pubkey)
         .map_err(|_| (StatusCode::BAD_REQUEST, "invalid pubkey".to_string()))?;
+
+    // On the public demo, serve only accounts that are already mirrored (the
+    // preloaded set, oracle refreshes, and demo activity). Lazily mirroring an
+    // arbitrary pubkey would fan out to a live mainnet fetch, letting a crawler
+    // drain the upstream RPC quota and grow the table without bound.
+    if state.demo_mode {
+        let sn = state.stagenet.read().await;
+        let (store, id) = (sn.store(), sn.id());
+        drop(sn);
+        return match store.get_account(&id, &pubkey).await.map_err(server_err)? {
+            Some(e) => Ok(Json(encode_account_rich(&e))),
+            None => Err((
+                StatusCode::NOT_FOUND,
+                "account not mirrored (arbitrary mainnet fetches are disabled on the public demo)"
+                    .to_string(),
+            )),
+        };
+    }
+
     let mut sn = state.stagenet.write().await;
     let account = sn.get_account(&pubkey).await.map_err(server_err)?;
     match account {
