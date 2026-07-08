@@ -3,6 +3,7 @@
 import { Activity, Boxes, Database, Radio } from "lucide-react";
 
 import { ActionsPanel } from "@/components/ActionsPanel";
+import { OraclePrices } from "@/components/OraclePrices";
 import { TxFeed } from "@/components/TxFeed";
 import { Card, StatCard } from "@/components/ui";
 import { useStagenet } from "@/lib/hooks";
@@ -54,6 +55,8 @@ export default function OverviewPage() {
           />
         </div>
       )}
+
+      <OraclePrices />
 
       <section id="actions" className="space-y-3">
         <h2 className="label">Actions</h2>

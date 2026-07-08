@@ -3,6 +3,38 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { client } from "./client";
+import { PYTH_FEEDS, decodePythPrice } from "./pyth";
+
+export interface OraclePrice {
+  symbol: string;
+  pubkey: string;
+  price: number | null;
+  syncState: string | null;
+}
+
+/** Live Pyth prices, decoded in the browser from the mirrored account bytes. */
+export function useOraclePrices() {
+  return useQuery({
+    queryKey: ["oracle-prices"],
+    queryFn: async (): Promise<OraclePrice[]> =>
+      Promise.all(
+        PYTH_FEEDS.map(async (feed) => {
+          try {
+            const account = await client.getAccount(feed.pubkey);
+            return {
+              symbol: feed.symbol,
+              pubkey: feed.pubkey,
+              price: decodePythPrice(account.dataBase64),
+              syncState: account.syncState,
+            };
+          } catch {
+            return { symbol: feed.symbol, pubkey: feed.pubkey, price: null, syncState: null };
+          }
+        }),
+      ),
+    refetchInterval: 10000,
+  });
+}
 
 export function useStagenet() {
   return useQuery({

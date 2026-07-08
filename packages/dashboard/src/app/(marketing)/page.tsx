@@ -1,3 +1,4 @@
+import { OraclePrices } from "@/components/OraclePrices";
 import { CTASection } from "@/components/marketing/CTASection";
 import { FeatureBento } from "@/components/marketing/FeatureBento";
 import { Hero } from "@/components/marketing/Hero";
@@ -11,6 +12,9 @@ export default function LandingPage() {
   return (
     <>
       <Hero />
+      <section className="px-6 pb-6">
+        <OraclePrices compact />
+      </section>
       <LogoTicker />
       <MirrorExplainer />
       <FeatureBento />
