@@ -33,7 +33,12 @@ out/
 !.vscode/extensions.json
 Thumbs.db
 
-# Local-only notes & docs (kept out of the public repo; README is tracked)
-/docs/
+# Local-only internal docs. The technical docs under docs/ ARE tracked (public);
+# only these session/pitch/grant internals stay out of the public repo.
+/docs/production-readiness-research.md
+/docs/PITCH_VIDEO_SCRIPT.md
+/docs/GUIDE_AND_PITCH.md
+/docs/grant-report.md
+/docs/STAGESVM_PHASE2_PROMPT*.md
 /STAGESVM_PHASE1_PROMPT.md
 *.log
