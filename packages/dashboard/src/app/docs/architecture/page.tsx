@@ -11,102 +11,106 @@ import { cn } from "@/lib/cn";
 export const metadata: Metadata = {
   title: "Architecture",
   description:
-    "How a Solana client request flows through rustag-rpc → rustag-core → rustag-mirror, the Cargo workspace crate map, and the Phase 2 / Phase 3 feature set.",
+    "RustAG dual-layer design: Ingest layer (TouchSetResolver, SquadsDecoder, MultiRpcFetcher) feeding a Sealed Rehearsal layer (LiteSVM, semantic diff, invariant policy, EvidenceBundle signing).",
 };
 
 const TOC: TocItem[] = [
   { id: "overview", title: "Architecture overview" },
-  { id: "data-flow", title: "Request & data flow", depth: 3 },
-  { id: "on-a-transaction", title: "What happens on a tx", depth: 3 },
+  { id: "ingest-layer", title: "Ingest layer", depth: 3 },
+  { id: "rehearsal-layer", title: "Sealed rehearsal layer", depth: 3 },
+  { id: "data-flow", title: "End-to-end data flow", depth: 3 },
   { id: "crates", title: "Crate map" },
   { id: "phases", title: "Phase 2 & 3" },
   { id: "phase-2", title: "Phase 2 features", depth: 3 },
   { id: "phase-3", title: "Phase 3 features", depth: 3 },
 ];
 
-const DATA_FLOW = `  Solana client / wallet / Anchor / dashboard
-          │  JSON-RPC      WebSocket      REST
-          ▼                               ▼
-┌───────────────────────────────────────────────────────┐
-│ rustag-rpc  (axum)                                     │
-│   • JSON-RPC server   POST  /            (jsonrpc.rs)  │
-│   • WebSocket server  GET   /  accountSubscribe (ws.rs)│
-│   • REST API          /api/*             (rest.rs)     │
-│     mounts one rustag_core::Stagenet behind RwLock     │
-└───────────────────────────────────────────────────────┘
-          │ send_transaction / get_account_info / airdrop
-          ▼
-┌───────────────────────────────────────────────────────┐
-│ rustag-core  (the engine)                              │
-│   • LiteSVM instance (execution)                       │
-│   • account-state machine: Unknown→Clean→Dirty/Pinned  │
-│   • lazy-mirror logic (pre_load_accounts_for_tx)       │
-│   • SQLite persistence via sqlx → survives restarts    │
-│   • background workers: oracle sync, metrics, realtime │
-└───────────────────────────────────────────────────────┘
-          │ getMultipleAccounts (cache miss / oracle refresh)
-          ▼
-┌───────────────────────────────────────────────────────┐
-│ rustag-mirror  (read-side, dependency-light)           │
-│   • raw JSON-RPC over reqwest (no solana-rpc-client)   │
-│   • MainnetMirror::fetch_multiple (≤100 keys/call)     │
-│   • known-program / oracle registry + RpcRateLimiter   │
-│   • RealtimeMirror push: accountSubscribe WS → mpsc    │
-└───────────────────────────────────────────────────────┘
-          │ HTTPS / WSS
-          ▼
-             Mainnet RPC (Helius / Triton / …)`;
+const DATA_FLOW = `  Wallet / Squads UI / Multisig signer / CI pipeline
+           │  POST /api/rehearse { proposal | payload }
+           ▼
+┌─────────────────────────────────────────────────────────┐
+│ INGEST LAYER                                             │
+│   SquadsDecoder  — Borsh-decode VaultTransaction        │
+│   TouchSetResolver — walk instruction accounts          │
+│   MultiRpcFetcher  — getMultipleAccounts (≤100/call)    │
+│   ForwardRecorder  — record traffic corpus              │
+└─────────────────────────────────────────────────────────┘
+           │ sealed pre-state closure (pubkey → AccountData)
+           ▼
+┌─────────────────────────────────────────────────────────┐
+│ SEALED REHEARSAL (rustag-rehearse)                       │
+│   Pass 1 (Pre-state)                                     │
+│     • load closure into isolated LiteSVM instance        │
+│     • content-hash every account → pre_state_root        │
+│   Pass 2 (Execution)                                     │
+│     • execute payload → capture post-state               │
+│     • SemanticDiff  — 11 change types                    │
+│     • InvariantPolicy — 6 alarm rules                    │
+│     • FidelityGrade — Grade A / Grade B                  │
+│   Signing                                                │
+│     • Ed25519 sign over pre+post root + diff + alarms    │
+│     → EvidenceBundle.json + closure.json                 │
+└─────────────────────────────────────────────────────────┘
+           │  signed EvidenceBundle
+           ▼
+  Signer review / offline verify / CI gate / registry`;
 
 type Tone = "lime" | "blue" | "amber" | "multi";
 
 const CRATES: { crate: string; resp: string; phase: string; tone: Tone }[] = [
   {
-    crate: "rustag-core",
-    resp: "The runtime: LiteSVM + AccountSync state machine + SQLite persistence + lazy-mirror engine. Central type Stagenet.",
+    crate: "rustag-rehearse",
+    resp: "Sealed two-pass rehearsal engine: PortableBundle, EvidenceBundle, FidelityGrade (A/B). The core GroundTruth primitive.",
     phase: "1",
     tone: "lime",
   },
   {
     crate: "rustag-mirror",
-    resp: "Mainnet fetcher: raw JSON-RPC over reqwest, known-program/oracle registry, RpcRateLimiter, and the realtime push source.",
+    resp: "Ingest layer: TouchSetResolver, SquadsDecoder, MultiRpcFetcher (≤100 keys/call, no solana-rpc-client), ForwardRecorder corpus builder.",
     phase: "1 · realtime 2",
     tone: "multi",
   },
   {
+    crate: "rustag-sim",
+    resp: "SemanticDiff (11 change types), InvariantPolicy (6 alarm rules), fuzzing, exploit scanning, differential execution.",
+    phase: "1 / 2",
+    tone: "multi",
+  },
+  {
+    crate: "rustag-attest",
+    resp: "Ed25519 signing, Merkle state_root, offline verify, EvidenceBundle wrapper, hash-chained AuditLog.",
+    phase: "1 / 3",
+    tone: "multi",
+  },
+  {
+    crate: "rustag-core",
+    resp: "Persistent SVM stagenet runtime: LiteSVM + AccountSync state machine (Unknown→Clean→Dirty→Pinned) + SQLite via sqlx.",
+    phase: "1",
+    tone: "lime",
+  },
+  {
     crate: "rustag-rpc",
-    resp: "Solana-compatible JSON-RPC + WebSocket + REST API, all on axum (serve, ServerAddrs, AppState).",
+    resp: "axum server: POST /api/rehearse, POST /api/verify, Solana-compatible JSON-RPC, WebSocket, REST API.",
     phase: "1",
     tone: "lime",
   },
   {
     crate: "rustag-cli",
-    resp: "The rustag binary (clap subcommands for every Phase 1/2/3 command).",
+    resp: "The rustag binary: rehearse, verify, forensics, record, serve, and full stagenet management surface.",
     phase: "1 + 2/3",
     tone: "multi",
   },
   {
     crate: "rustag-scheduler",
-    resp: "Activity Scheduler: pairs a Schedule (@every / cron) with an Action (airdrop / transfer / raw-tx).",
+    resp: "Activity Scheduler: @every / cron actions (airdrop / transfer / raw-tx) for the stagenet dev-tool surface.",
     phase: "2",
     tone: "blue",
-  },
-  {
-    crate: "rustag-sim",
-    resp: "Simulation: fork/replay/stress/compare, MEV/Jito bundles, invariant fuzzing, exploit scanning, differential execution.",
-    phase: "2 / 3",
-    tone: "multi",
   },
   {
     crate: "rustag-cloud",
-    resp: "Multi-tenant control plane: each stagenet an isolated child process behind a reverse proxy with API-key auth.",
+    resp: "Multi-tenant control plane: isolated child processes behind a reverse proxy with Bearer rk_… API-key auth.",
     phase: "2",
     tone: "blue",
-  },
-  {
-    crate: "rustag-attest",
-    resp: "Verifiable attestation: SHA-256 Merkle state_root, Ed25519-signed manifest, offline verify, hash-chained AuditLog.",
-    phase: "3",
-    tone: "amber",
   },
   {
     crate: "rustag-replay",
@@ -122,15 +126,9 @@ const CRATES: { crate: string; resp: string; phase: string; tone: Tone }[] = [
   },
   {
     crate: "packages/sdk",
-    resp: "@rustag/sdk — TypeScript client for the REST API.",
+    resp: "@rustag/sdk — TypeScript client for POST /api/rehearse, POST /api/verify, and the full REST surface.",
     phase: "1",
     tone: "lime",
-  },
-  {
-    crate: "packages/anchor-plugin",
-    resp: "@rustag/anchor-plugin — ephemeral stagenet provider for Anchor tests against real mainnet state.",
-    phase: "2",
-    tone: "blue",
   },
 ];
 
@@ -146,59 +144,89 @@ export default function ArchitecturePage() {
     <DocArticle
       eyebrow="Advanced"
       title="Architecture"
-      lead="RustAG turns LiteSVM into a persistent, mainnet-mirroring staging environment. A request flows down through four layers — protocol, engine, mirror, and mainnet — with all policy living in the core."
+      lead="RustAG is a dual-layer system. The Ingest layer resolves every account a proposed transaction will touch. The Sealed Rehearsal layer executes it in isolation, diffs the state, fires invariant alarms, and signs the result as a cryptographic EvidenceBundle."
       toc={TOC}
     >
       <H2 id="overview">Architecture overview</H2>
       <p>
-        Instead of forking at a block hash (which Solana has no equivalent of), RustAG fetches mainnet
-        accounts lazily on first access and tracks every local write so it knows what it may and may not
-        refresh. A Solana client talks to a stagenet as if it were a cluster.
+        The core design principle: the rehearser must be <strong>independently verifiable</strong>.
+        That means the input (pre-state closure) must be content-addressable from public mainnet
+        data, and the output (EvidenceBundle) must be byte-for-byte reproducible by anyone who
+        runs the same closure through the same payload.
+      </p>
+      <p>
+        RustAG achieves this by splitting responsibility into two layers that share no mutable
+        state with each other.
       </p>
 
-      <H3 id="data-flow">Request &amp; data flow</H3>
-      <CodeBlock lang="text" filename="four-layer request flow" code={DATA_FLOW} />
+      <H3 id="ingest-layer">Ingest layer</H3>
       <p>
-        <code>rustag-mirror</code> is a pure read-side that knows nothing about dirty/clean tracking — it
-        just answers &ldquo;give me the current mainnet state of these pubkeys.&rdquo; All the policy (state
-        machine, persistence, sync invariants) lives in <code>rustag-core</code>, and all the protocol
-        surface lives in <code>rustag-rpc</code>.
+        The ingest layer&apos;s job is to resolve the exact set of accounts the proposed payload
+        will read or write — called the <strong>touch set</strong>. It never executes anything;
+        it only reads mainnet.
       </p>
+      <ul>
+        <li>
+          <strong>SquadsDecoder</strong> — Borsh-decodes a Squads v4{" "}
+          <code>VaultTransaction</code> from its on-chain proposal address.
+        </li>
+        <li>
+          <strong>TouchSetResolver</strong> — static analysis walk of instruction account metas
+          to produce the minimal pubkey set.
+        </li>
+        <li>
+          <strong>MultiRpcFetcher</strong> — batches <code>getMultipleAccounts</code> calls
+          (≤100 keys per call) over raw reqwest without <code>solana-rpc-client</code> — this
+          keeps LiteSVM 0.12 dep compatibility.
+        </li>
+        <li>
+          <strong>ForwardRecorder</strong> — optional corpus recorder that serializes the
+          resolved closure to disk for CI replay.
+        </li>
+      </ul>
 
-      <H3 id="on-a-transaction">What happens on a transaction</H3>
+      <H3 id="rehearsal-layer">Sealed rehearsal layer</H3>
       <p>
-        <code>Stagenet::send_transaction</code> runs four stages:
+        The rehearsal layer receives the sealed closure (pubkey → AccountData snapshot at a
+        known slot). It runs a deterministic two-pass process and produces a signed artifact:
       </p>
       <ol>
         <li>
-          <strong>Pre-load</strong> — extract the transaction&apos;s static account keys and batch-fetch any
-          that are not already loaded and not <code>Dirty</code> from mainnet via the mirror, loading them
-          into LiteSVM as <code>Clean</code> (fetch failures are logged and tolerated).
+          <strong>Pass 1 — Pre-state root</strong>: load the closure into an isolated LiteSVM
+          instance, SHA-256 hash every account in pubkey order →{" "}
+          <code>pre_state_root</code>.
         </li>
         <li>
-          <strong>Execute</strong> through LiteSVM with signature and blockhash checks on.
+          <strong>Pass 2 — Execute + diff</strong>: execute the payload, capture post-state,
+          run <code>SemanticDiff</code> (11 change types) and{" "}
+          <code>InvariantPolicy</code> (6 alarm rules), derive <code>post_state_root</code>,
+          assign <code>FidelityGrade</code>.
         </li>
         <li>
-          <strong>Track writes</strong> — derive writable accounts from the message header layout, mark them{" "}
-          <code>Dirty</code>, and persist their post-state.
-        </li>
-        <li>
-          <strong>Index</strong> the transaction (signature, success, fee, compute units, programs, logs)
-          for the dashboard and <code>rustag logs</code>.
+          <strong>Signing</strong>: Ed25519-sign the concatenation of pre_state_root +
+          post_state_root + semantic_diff + alarms + grade → write{" "}
+          <code>EvidenceBundle.json</code> and portable <code>closure.json</code>.
         </li>
       </ol>
-      <p>
-        For <code>VersionedMessage::V0</code> transactions, <code>prepare_accounts</code> resolves{" "}
-        <code>address_table_lookups</code> through the mirror before execution, so v0 DeFi transactions read
-        real mainnet state instead of failing with <code>LookupTableAccountNotFound</code>.
-      </p>
+      <Callout variant="info" title="Grade A vs Grade B">
+        Grade A means the closure is complete — every account was resolved and the rehearsal is
+        deterministically re-executable offline. Grade B means one or more accounts could not be
+        fetched (rate-limited, new account, etc.); the bundle is still signed but the
+        post_state_root cannot be reproduced without re-fetching. Treat Grade B as advisory only
+        and verify with a fresh RPC key.
+      </Callout>
+
+      <H3 id="data-flow">End-to-end data flow</H3>
+      <CodeBlock lang="text" filename="GroundTruth two-layer data flow" code={DATA_FLOW} />
 
       <H2 id="crates">Crate map</H2>
       <p>
-        RustAG is a Cargo workspace under <code>crates/</code>. The dependency direction is{" "}
-        <code>rustag-cli → rustag-rpc → rustag-core → rustag-mirror</code>; <code>rustag-core</code>{" "}
-        re-exports the mirror surface so downstream crates have a single dependency. Every Phase 2/3 crate is
-        pure Rust with no external service dependency.
+        RustAG is a Cargo workspace under <code>crates/</code>. The core dependency direction is{" "}
+        <code>
+          rustag-cli → rustag-rpc → rustag-rehearse → rustag-sim + rustag-attest →
+          rustag-mirror → rustag-core
+        </code>
+        . Every Phase 2/3 crate is pure Rust with no external service dependency.
       </p>
 
       <div className="my-6 overflow-x-auto rounded-[4px] border border-border">
@@ -237,11 +265,14 @@ export default function ArchitecturePage() {
         </table>
       </div>
 
-      <H2 id="phases">Phase 2 &amp; 3</H2>
+      <H2 id="phases">Phase 2 & 3</H2>
       <p>
-        Everything beyond Phase 1 is built on a single invariant: <strong>a <code>Dirty</code> or{" "}
-        <code>Pinned</code> account is never overwritten by any sync</strong> — re-enforced on every new
-        path, including the realtime push path.
+        The invariant across all phases:{" "}
+        <strong>
+          the pre-state closure is always sealed before execution and never mutated after.
+        </strong>{" "}
+        Every Phase 2/3 extension is additive — it does not change how Phase 1 bundles are
+        produced or verified.
       </p>
 
       <H3 id="phase-2">
@@ -249,93 +280,76 @@ export default function ArchitecturePage() {
       </H3>
       <ul>
         <li>
-          <strong>Real-time mirror (push)</strong> — a server-side <code>accountSubscribe</code> WebSocket
-          (the Geyser/Yellowstone protocol) updates oracle prices sub-second, behind the{" "}
-          <code>realtime</code> feature. A native Yellowstone gRPC source is a drop-in producer for the same{" "}
-          <code>mpsc</code> channel.
+          <strong>Yellowstone gRPC recording</strong> — real-time traffic corpus from a Geyser
+          stream; replaces <code>ForwardRecorder</code>&apos;s poll-based approach with a push
+          source for sub-second latency corpus building.
         </li>
         <li>
-          <strong>Activity Scheduler</strong> — recurring on-chain actions on <code>@every</code> /
-          aliases / 5-field cron (Vixie semantics, no external cron crate); actions are airdrop, signed
-          transfer, or raw-tx replay.
+          <strong>Evidence Registry</strong> — hosted, append-only store for signed bundles with
+          N-of-M signer provenance. A Squads vault can require M-of-N reviewers to submit a valid
+          Grade A bundle before a proposal can be approved.
         </li>
         <li>
-          <strong>Simulation framework</strong> — <code>fork</code> / <code>replay</code> /{" "}
-          <code>stress</code> / <code>compare</code> against an isolated in-memory copy; the base is never
-          mutated and mainnet is never touched. Reachable via <code>POST /api/simulate</code> and{" "}
-          <code>client.simulate([...])</code>.
+          <strong>Squads web UI embed</strong> — a signer-review panel that fetches and renders
+          the EvidenceBundle inline in the Squads proposal UI, without requiring any CLI.
         </li>
         <li>
-          <strong>Analytics</strong> — a background sampler captures TVL, transaction volume, accounts
-          mirrored, dirty count, and slot as a queryable time-series.
+          <strong>Activity Scheduler</strong> — recurring on-chain actions for the stagenet dev
+          surface (<code>@every / cron</code>).
         </li>
         <li>
-          <strong>Cloud control plane</strong> (<code>rustag-cloud</code>) — multi-tenant orchestration;
-          each stagenet is an isolated child process behind a reverse proxy with{" "}
-          <code>Bearer rk_…</code> API-key auth and enforced cross-tenant isolation.
+          <strong>Real-time mirror push</strong> — <code>accountSubscribe</code> WebSocket /
+          Yellowstone gRPC → oracle prices under 2s staleness.
         </li>
         <li>
-          <strong>GitHub Action &amp; Anchor plugin</strong> — an ephemeral per-PR stagenet, and{" "}
-          <code>@rustag/anchor-plugin</code>&apos;s <code>rustagAnchorProvider({"{ preload }"})</code> /{" "}
-          <code>EphemeralStagenet</code>.
+          <strong>Cloud control plane</strong> (<code>rustag-cloud</code>) — multi-tenant hosted
+          rehearsal service with <code>Bearer rk_…</code> API-key auth.
         </li>
       </ul>
       <CodeBlock
         lang="rust"
-        filename="stress a fork (rustag-sim) — the base is never mutated"
-        code={`let mut fork = base.fork("herd").await?;
-let report = rustag_sim::stress(&mut fork, "liquidations", 1_000, |i| build_tx(i)).await?;
-println!("success rate: {:.1}%", report.success_rate() * 100.0);`}
+        filename="semantic diff — 11 change types (rustag-sim)"
+        code={`// A sample of the SemanticChange variants produced by SemanticDiff
+SemanticChange::LamportsDrained    { from, to, delta }
+SemanticChange::UpgradeAuthority   { from, to }       // CRITICAL alarm
+SemanticChange::ProgramUpgraded    { pubkey, old_hash, new_hash }
+SemanticChange::TokenAuthorityChanged { mint, from, to }
+SemanticChange::AccountClosed      { pubkey, recovered_lamports }
+SemanticChange::DataWritten        { pubkey, len }
+// + 5 more: Created, Frozen, Thawed, NonceDerived, SysvarMutated`}
       />
 
       <H3 id="phase-3">
         Phase 3 features <PhaseBadge phase={3} className="ml-1" />
       </H3>
-      <p>
-        Phase 3 is about trust and depth — making the <em>output</em> of staging something an auditor, grant
-        committee, or CI gate can cryptographically rely on. Every artifact is byte-for-byte reproducible
-        from public inputs.
-      </p>
       <ul>
         <li>
-          <strong>Verifiable attestation</strong> (<code>rustag-attest</code>) — a SHA-256 Merkle{" "}
-          <code>state_root</code> over the pubkey-sorted account set, an Ed25519-signed manifest, and an
-          offline <code>rustag verify</code>; plus a tamper-evident, hash-chained <code>AuditLog</code>.
+          <strong>Per-flow pricing & quota</strong> — usage-metered rehearsal API with
+          tiered plans (free / pro / enterprise).
         </li>
         <li>
-          <strong>Time-travel &amp; replay</strong> (<code>rustag-replay</code>) — content-addressed{" "}
-          <code>Checkpoint</code>s, deterministic <code>Journal</code> replay (<code>verify_deterministic</code>),{" "}
-          <code>Timeline</code> diffs, and fork-of-fork <code>Lineage</code> with full ancestry.
+          <strong>Time-travel & replay</strong> (<code>rustag-replay</code>) —
+          content-addressed <code>Checkpoint</code>s, deterministic <code>Journal</code> replay,{" "}
+          <code>Timeline</code> diffs, and fork-of-fork <code>Lineage</code>.
         </li>
         <li>
-          <strong>Adversarial simulation</strong> (<code>rustag-sim</code>) — atomic Jito-style bundles with
-          tip accounting, deterministic invariant fuzzing (capturing the reproducing seed), a reproducible
-          exploit-signature scanner, and a differential-execution harness.
+          <strong>Adversarial simulation</strong> (<code>rustag-sim</code>) — atomic Jito-style
+          bundles with tip accounting, deterministic invariant fuzzing, and a reproducible
+          exploit-signature scanner.
         </li>
         <li>
-          <strong>State / ZK compression testing</strong> (<code>rustag-compression</code>) — a keccak-256{" "}
-          <code>ConcurrentMerkleTree</code> matching <code>spl-account-compression</code> so compressed-state
-          programs and their proofs verify deterministically off-chain.
+          <strong>State / ZK compression testing</strong> (<code>rustag-compression</code>) — a
+          keccak-256 <code>ConcurrentMerkleTree</code> matching{" "}
+          <code>spl-account-compression</code> so compressed-state programs verify
+          deterministically off-chain.
         </li>
       </ul>
-      <CodeBlock
-        lang="rust"
-        filename="build a concurrent Merkle tree and verify a proof (rustag-compression)"
-        code={`use rustag_compression::{ConcurrentMerkleTree, keccak256, verify_path};
-
-let mut tree = ConcurrentMerkleTree::new(14, 64).unwrap();
-let root = tree.append(keccak256(b"first compressed leaf")).unwrap();
-
-let proof = tree.prove(0).unwrap();
-assert!(verify_path(&root, &proof.leaf, proof.leaf_index, &proof.siblings));`}
-      />
 
       <Callout variant="early" title="Honest boundary">
-        Executing <em>arbitrary mainnet programs</em> end-to-end — e.g. a full Jupiter swap — needs the
-        fuller program-loading planned for Phase 2+. Phase 1 loads program accounts verbatim (readable and
-        present) but does not yet JIT-load their BPF bytecode from the program-data account. Your own
-        deployed program reading real mainnet state works today. Real Firedancer execution in the
-        differential harness is a documented <code>trait Backend</code> extension point.
+        Phase 1 delivers: rehearse, verify, forensics, serve, and the signed EvidenceBundle end-to-end.
+        The Evidence Registry, Squads UI embed, Yellowstone gRPC, and hosted multi-tenant service are
+        Phase 2 and are not yet released. Everything documented on this page as Phase 1 works today —
+        build from source and run locally.
       </Callout>
     </DocArticle>
   );

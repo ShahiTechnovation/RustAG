@@ -9,13 +9,13 @@ import type { TocItem } from "@/components/docs/OnThisPage";
 export const metadata: Metadata = {
   title: "Trust & security",
   description:
-    "RustAG's threat model, verifiable attestation and tamper-evident audit log, service-level objectives, an honest list of early-access limitations, and an FAQ.",
+    "RustAG's threat model, Ed25519 EvidenceBundle integrity, N-of-M provenance, Grade A verification, service-level objectives, honest early-access limitations, and FAQ.",
 };
 
 const TOC: TocItem[] = [
   { id: "threat-model", title: "Security & threat model" },
-  { id: "isolation", title: "Tenant isolation", depth: 3 },
-  { id: "attestation", title: "Attestation integrity", depth: 3 },
+  { id: "bundle-integrity", title: "EvidenceBundle integrity", depth: 3 },
+  { id: "grade-a", title: "Grade A verification", depth: 3 },
   { id: "audit-log", title: "Audit-log tamper-evidence", depth: 3 },
   { id: "service-levels", title: "Service levels" },
   { id: "limitations", title: "Known limitations" },
@@ -24,32 +24,36 @@ const TOC: TocItem[] = [
 
 const FAQ = [
   {
-    q: "What does it cost to read real mainnet state?",
-    a: "Zero SOL. On first access RustAG lazily mirrors the mainnet account into the stagenet (mainnet data is public), then keeps oracles fresh in the background. You can airdrop unlimited SOL — no faucet, no cap — so an integration suite can actually run. Airdrops are capped only to prevent u64 overflow.",
+    q: "Can a malicious proposer forge an EvidenceBundle?",
+    a: "No. A valid Grade A bundle requires a valid Ed25519 signature over the pre_state_root + post_state_root + semantic_diff + alarms. The pre_state_root is derived by independently re-fetching the closure from mainnet — a forged pre-state would not match what any honest verifier fetches. A compromised rehearser UI cannot produce a bundle whose pre-state root is consistent with mainnet AND whose signature is valid under a known attester key.",
   },
   {
-    q: "Is this safe to run — can I break anything on-chain?",
-    a: "No. A stagenet is an isolated environment; transactions you send execute locally against mirrored state and spend zero real SOL. Reading mainnet only pulls public account data on demand; it never writes to mainnet. You test unaudited code here precisely so you don't test it on mainnet.",
+    q: "What does Grade A guarantee?",
+    a: "Grade A means the EvidenceBundle is deterministically re-executable: every account in the closure was fetched from mainnet at a recorded slot, content-hashed, and the pre_state_root matches. Any verifier who re-fetches those pubkeys at the same slot (or uses the portable closure.json) will produce the same pre_state_root, execute the same payload, and produce the same post_state_root — without trusting the rehearser.",
   },
   {
-    q: "How is this different from solana-test-validator?",
-    a: "The test validator gives you an empty local cluster — no real Raydium pools, no real Pyth prices, and you can't fork the chain the way you can on Ethereum. RustAG is a mainnet-mirroring stagenet: it lazily pulls real, current mainnet accounts on first access, so your code runs against live DeFi state.",
+    q: "What is Grade B?",
+    a: "Grade B means one or more accounts in the touch set could not be resolved (rate-limited RPC, account does not exist yet, etc.). The bundle is still signed but the post_state_root cannot be independently reproduced without a complete closure. Treat Grade B bundles as advisory — they show what the rehearser saw, but they are not independently verifiable.",
   },
   {
-    q: "How does it compare to Bankrun / LiteSVM?",
-    a: "RustAG's runtime is LiteSVM-backed, so it shares that fast in-process execution model — but it adds the lazy mainnet mirror, a dirty/clean/pinned state machine, SQLite persistence, a Solana-compatible JSON-RPC + WebSocket + REST server, a CLI, a dashboard, and (Phase 3) signed attestations and an exploit scanner. Bankrun/LiteSVM are in-process test harnesses; RustAG is a persistent, drop-in cluster.",
+    q: "Is this safe to run — can anything break on mainnet?",
+    a: "No. The rehearsal runs inside a sealed, isolated LiteSVM instance with no write path to mainnet. The ingest layer only calls getMultipleAccounts (public read-only RPC). Nothing is signed and broadcast to any Solana cluster. The actual proposal remains pending in Squads until M-of-N signers manually approve it.",
   },
   {
-    q: "Is execution deterministic / reproducible?",
-    a: "Yes, and it's provable. rustag attest writes a signed, Merkle-rooted manifest committing to the exact pubkey-sorted account set and ordered transaction outcomes; rustag verify <file> checks it offline with no server and no network, exiting non-zero if INVALID. The rustag-replay crate adds checkpointing and deterministic journal replay.",
+    q: "How is this different from just simulating a transaction in a wallet?",
+    a: "Wallet simulators run simulateTransaction via the cluster RPC — the result is a log dump with no pre-state commitment, no semantic diff, no invariant alarms, and no signature. Anyone can alter the simulation result before showing it to a signer. RustAG's EvidenceBundle commits to the exact pre-state used, what changed semantically (not just logs), which alarm rules fired, and signs all of it — so a signer can verify the bundle independently before approving.",
   },
   {
-    q: "Can I run a full Jupiter swap end-to-end today?",
-    a: "Your own deployed program reading real mainnet state works now. Executing a foreign on-chain program by loading its BPF bytecode (a complete Jupiter swap end-to-end) is the remaining boundary — it needs the Phase 2+ program-loading. See Known limitations.",
+    q: "What invariant rules fire alarms?",
+    a: "Phase 1 ships 6 rules: upgrade_authority_changed (CRITICAL), large_sol_drain (HIGH, >100 SOL delta), nonce_authority_combo (MEDIUM — nonce + authority rotation in same tx), program_freeze_guard (HIGH), token_authority_changed (HIGH), account_closed_drain (MEDIUM). More rules are additive in future phases.",
   },
   {
-    q: "Can I gate CI on this?",
-    a: "Yes. rustag scan -s <name> --fail-on <severity> scans recorded transactions for exploit signatures and exits non-zero at or above the given severity, so it's a CI gate, not just a report. The GitHub Action spins up an ephemeral per-PR stagenet, runs your command against real mainnet state, posts a PR summary, and tears down.",
+    q: "Can I gate CI on an EvidenceBundle?",
+    a: "Yes. rustag rehearse --proposal <PUBKEY> --fail-on high exits non-zero if any alarm reaches HIGH or above. The upgrade-rehearsal.yml GitHub Action in the repo shows how to wire this into a PR gate: it fetches the proposal, runs the rehearsal, and blocks merge if any HIGH/CRITICAL alarms fire.",
+  },
+  {
+    q: "Is the closed-source hosted service the only way to use this?",
+    a: "No. Everything described in Phase 1 runs entirely from source — cargo build --release, then rustag rehearse. The hosted service (Phase 2+) adds the Evidence Registry, Squads UI embed, and N-of-M provenance chain. The CLI + local server is and will remain open source.",
   },
 ];
 
@@ -88,140 +92,168 @@ export default function SecurityPage() {
     <DocArticle
       eyebrow="Trust"
       title="Trust & security"
-      lead="RustAG is honest about where the MVP ends. This page covers the hosted threat model, the cryptographic trust layer, service-level objectives, and a plain list of what does and does not work yet."
+      lead="RustAG's security story is about the EvidenceBundle — not the rehearser. The bundle must be independently verifiable even if the rehearsal service is compromised. This page covers the cryptographic integrity model, Grade A verification, service-level objectives, and an honest list of what the Phase 1 MVP does and does not do."
       toc={TOC}
     >
-      <H2 id="threat-model">Security &amp; threat model</H2>
+      <H2 id="threat-model">Security & threat model</H2>
       <p>
-        The threat model is scoped to the <strong>hosted, multi-tenant</strong> product. The open-source
-        local CLI runs entirely on your own machine and is out of scope — when you run a stagenet locally,
-        you are your own trust boundary.
-      </p>
-
-      <H3 id="isolation">Tenant isolation</H3>
-      <p>
-        Tenants are mutually distrusting and may run <strong>arbitrary, untrusted Solana program
-        bytecode</strong> inside their stagenet — that is the point of the product. The hard boundary is
-        therefore between one stagenet runtime and everything else; a stagenet executes adversarial code and
-        is treated as hostile. Cross-tenant isolation is defended in depth:
+        The primary adversary in the GroundTruth threat model is a{" "}
+        <strong>malicious or compromised transaction proposer</strong> — not the rehearsal
+        service itself. A multisig signer should be able to verify an EvidenceBundle without
+        trusting:
       </p>
       <ul>
-        <li>Each stagenet has its own account store and data directory — no shared account namespace.</li>
-        <li>
-          Every <code>/v1/*</code> query is filtered by the authenticated <code>tenant_id</code>; a lookup
-          that doesn&apos;t match returns <code>NotFound</code>, so one tenant cannot even enumerate
-          another&apos;s slugs.
-        </li>
-        <li>
-          Each stagenet runs as a separate OS process today; production hardening runs each pod under{" "}
-          <code>runtimeClassName: kata</code> (Firecracker microVM) with per-tenant CPU/memory quotas.
-        </li>
-        <li>
-          API keys are SHA-256-digested at rest, shown once, tenant-scoped, and revocable; upstream RPC keys
-          (which carry <code>?api-key=</code>) are deliberately never logged.
-        </li>
+        <li>The proposer&apos;s UI or wallet.</li>
+        <li>The rehearsal service that produced the bundle.</li>
+        <li>The RPC endpoint the rehearsal service used.</li>
       </ul>
-
-      <H3 id="attestation">Attestation integrity</H3>
       <p>
-        The <code>rustag-attest</code> crate produces a signed, Merkle-rooted proof of the exact
-        mainnet-derived state a program was tested against. The signing digest is built from a fixed field
-        order with length-prefixed, domain-tagged fields rather than from JSON — JSON key/whitespace ordering
-        is not canonical and must never affect what a signature commits to. The <code>state_root</code> is a
-        binary SHA-256 Merkle root over the <strong>pubkey-sorted</strong> account set, with leaves
-        (<code>0x00</code>) and nodes (<code>0x01</code>) domain-separated to prevent second-preimage
-        attacks. Account leaves commit to consensus-visible fields only; the internal dirty/clean/pinned
-        bookkeeping is deliberately excluded.
+        The hosted service threat model (Phase 2+) also covers tenant isolation:{" "}
+        each rehearsal runs in its own context with no shared account namespace. The local CLI
+        runs entirely on your own machine and is out of scope for multi-tenant isolation.
       </p>
+
+      <H3 id="bundle-integrity">EvidenceBundle integrity</H3>
+      <p>
+        The <code>rustag-attest</code> crate signs a structured digest — not a JSON blob. The
+        signing input is built from a fixed field order with length-prefixed,
+        domain-tagged fields:
+      </p>
+      <ol>
+        <li>
+          <code>pre_state_root</code> — SHA-256 Merkle root over the pubkey-sorted closure.
+          Leaves are domain-separated with <code>0x00</code>; nodes with <code>0x01</code> to
+          prevent second-preimage attacks. Account leaves commit to consensus-visible fields
+          only (lamports, data, owner, executable, rent_epoch); the internal
+          dirty/clean/pinned bookkeeping is deliberately excluded.
+        </li>
+        <li>
+          <code>payload_hash</code> — SHA-256 of the raw bincode-serialized transaction bytes.
+        </li>
+        <li>
+          <code>post_state_root</code> — same Merkle construction over post-execution accounts.
+        </li>
+        <li>
+          <code>semantic_diff_hash</code> — SHA-256 of the canonical JSON-serialized diff.
+        </li>
+        <li>
+          <code>alarms_hash</code> — SHA-256 of the canonical JSON-serialized alarm list.
+        </li>
+        <li>
+          <code>fidelity_grade</code> — 1 byte: 0x41 = A, 0x42 = B.
+        </li>
+      </ol>
       <CodeBlock
         lang="rust"
-        filename="sign a manifest, then verify it offline against a concrete account set"
-        code={`let attestation = Attestation::create(manifest, &keypair);
+        filename="verify a bundle offline — no server, no network"
+        code={`use rustag_attest::EvidenceBundle;
 
-// Recompute the state root from \`accounts\`, confirm it matches the
-// manifest, and check the Ed25519 signature — no server, no network.
-let report = attestation.verify_against(&accounts)?;
-assert!(report.is_valid());
+let bundle: EvidenceBundle = serde_json::from_str(&bundle_json)?;
+let closure = PortableBundle::from_file("groundtruth-closure.json")?;
 
-// Forging any signed field (e.g. att.manifest.slot = 999) breaks the signature.`}
+// Re-derives pre_state_root from closure, re-executes payload,
+// checks Ed25519 signature — exits Err if INVALID.
+let report = bundle.verify_against(&closure)?;
+assert!(report.grade == FidelityGrade::A);
+assert!(report.alarms.is_empty() || report.alarms.iter().all(|a| a.severity < Severity::High));`}
+      />
+
+      <H3 id="grade-a">Grade A verification</H3>
+      <p>
+        A Grade A bundle is <strong>deterministically re-executable</strong> by any verifier who
+        has the portable <code>closure.json</code>. The verification steps are:
+      </p>
+      <ol>
+        <li>
+          Re-derive <code>pre_state_root</code> from closure → confirm it matches the bundle.
+        </li>
+        <li>Execute the payload in a fresh LiteSVM instance loaded from the closure.</li>
+        <li>
+          Re-derive <code>post_state_root</code> → confirm it matches the bundle.
+        </li>
+        <li>Check the Ed25519 signature over the structured digest described above.</li>
+      </ol>
+      <p>
+        Steps 1–4 require zero network access — just the bundle + closure files and a Rust
+        binary. The attester&apos;s pubkey is embedded in the bundle and is the only trust
+        anchor a verifier needs to establish out-of-band (e.g., from the Squads multisig&apos;s
+        governance configuration).
+      </p>
+      <CodeBlock
+        lang="bash"
+        code={`# Three-command verification workflow
+rustag rehearse --proposal <PUBKEY> --rpc $RPC    # produces bundle + closure
+rustag verify bundle.json --closure closure.json   # offline, exit 1 if INVALID
+# ✓ Grade A · Signature valid · pre/post roots match`}
       />
 
       <H3 id="audit-log">Audit-log tamper-evidence</H3>
       <p>
-        <code>AuditLog</code> is an append-only, <strong>hash-chained</strong> log — the SOC 2 groundwork.
-        Each entry carries a monotonic <code>seq</code>, a <code>prev_hash</code>, and its own{" "}
-        <code>hash</code>; the chain is genesis-anchored at the all-zero hash. Any insertion, deletion, or
-        edit anywhere in the log breaks the chain from that point forward, and <code>verify()</code> returns{" "}
-        <code>Err(index)</code> at the exact first inconsistent entry.
+        <code>AuditLog</code> is an append-only, <strong>hash-chained</strong> log — the SOC 2
+        groundwork. Each entry carries a monotonic <code>seq</code>, a <code>prev_hash</code>,
+        and its own <code>hash</code>; the chain is genesis-anchored at the all-zero hash. Any
+        insertion, deletion, or edit anywhere in the log breaks the chain from that point
+        forward, and <code>verify()</code> returns <code>Err(index)</code> at the exact first
+        inconsistent entry.
       </p>
 
       <H2 id="service-levels">Service levels</H2>
       <p>
-        SLO targets apply to the <strong>hosted</strong> control plane and stagenets — local/CLI stagenets
-        run on your own machine and are best-effort. Targets are deliberately modest; under-promising at
-        this stage is intentional.
+        SLO targets apply to the <strong>hosted</strong> service (Phase 2+). Local CLI
+        rehearsals run on your own machine with your own RPC key and are best-effort. Targets
+        are deliberately modest; under-promising at this stage is intentional.
       </p>
       <SloTable
         rows={[
-          ["Control-plane API (/v1/*) uptime", "99.5% / mo", "Target"],
-          ["Cloud stagenet creation within 30s", "99% of attempts", "Target — health-gated start"],
-          ["getAccountInfo (cache hit)", "p99 < 50 ms", "Target"],
-          ["getAccountInfo (cold mainnet fetch)", "p99 < 2 s", "Target"],
-          ["Oracle price staleness (realtime)", "p99 < 2 s", "Target"],
+          ["Rehearsal API (POST /api/rehearse) uptime", "99.5% / mo", "Target"],
+          ["Grade A bundle latency (Helius RPC)", "p99 < 8 s", "Target"],
+          ["Grade A bundle latency (cached closure)", "p99 < 2 s", "Target"],
+          ["getAccountInfo closure hit", "p99 < 50 ms", "Target"],
+          ["Oracle price staleness (realtime, Phase 2)", "p99 < 2 s", "Target"],
           ["Cross-tenant data-access incidents", "hard 0", "Enforced + tested"],
-          ["Stagenet wake-from-sleep", "p99 < 15 s", "Aspirational"],
+          ["Evidence Registry write durability", "99.99%", "Target"],
         ]}
       />
-      <p>
-        The error budget is the inverse of the availability target (0.5%/month); when exhausted, reliability
-        work ships before features. Failure modes are explicit: a cold-fetch mainnet RPC failure serves
-        stale cached data with a warning and never panics; on a realtime WebSocket disconnect the caller
-        reconnects while <code>Clean</code> accounts keep their last value and <code>Dirty</code>/
-        <code>Pinned</code> accounts are never touched.
-      </p>
 
       <H2 id="limitations">Known limitations</H2>
-      <Callout variant="early" title="The headline limitation">
-        <strong>Your own deployed program reading real mainnet state works today.</strong> What does{" "}
-        <em>not</em> work end-to-end yet is executing an arbitrary foreign on-chain program by loading its
-        BPF bytecode — a full Jupiter swap, start to finish. You can preload real Pyth/Raydium/Jupiter{" "}
-        <em>accounts</em> and read them, airdrop unlimited SOL, and send/confirm transactions from your own
-        code; you cannot yet invoke an unmodified third-party program by its on-chain bytecode and have it
-        execute. That needs the Phase 2+ program-loading.
+      <Callout variant="early" title="Phase 1 honest boundary">
+        <strong>
+          rehearse + verify + forensics work today — build from source and run locally.
+        </strong>{" "}
+        The Evidence Registry (hosted append-only bundle store), Squads UI embed (signer-review
+        panel), Yellowstone gRPC real-time recording, and per-flow pricing are Phase 2 and are
+        not yet released.
       </Callout>
       <p>
-        RustAG implements the Phase 2 spec with deliberate single-node substitutions — each satisfies the
-        same contract as the eventual target, so the swap is additive, not a rewrite:
+        Other known limitations in Phase 1:
       </p>
       <ul>
         <li>
-          <strong>Streaming mirror</strong> — an <code>accountSubscribe</code> WebSocket instead of native
-          Yellowstone gRPC. Sub-second push with zero lock-in. Live filter updates on an open subscription
-          and built-in auto-reconnect are not yet done.
+          <strong>Foreign program execution</strong> — the closure resolver fetches program
+          accounts verbatim (readable and present), but does not yet JIT-load BPF bytecode from
+          the program-data account. Rehearsing a Squads proposal that itself invokes a complex
+          foreign program (e.g., a full Jupiter swap CPI) may produce a Grade B bundle if the
+          bytecode is unavailable. Your own deployed program reading real mainnet state works today.
         </li>
         <li>
-          <strong>Datastore</strong> — SQLite + moka instead of Postgres + Redis; correct for the single-node
-          MVP. The Postgres migration and Row-Level-Security policies are not yet done.
+          <strong>Address lookup tables</strong> — v0 transactions with ALTs are resolved via
+          a mirror fetch; ALT-heavy DeFi bundles are resolved but may produce Grade B if any
+          ALT account is unavailable.
         </li>
         <li>
-          <strong>Multi-tenant isolation</strong> — child-process isolation instead of Kata + Kubernetes;
-          the <code>kube-rs</code> orchestrator and a running Kata cluster are not yet done.
+          <strong>Datastore</strong> — SQLite + moka in the stagenet runtime (not Postgres);
+          correct for the single-node local MVP.
         </li>
         <li>
-          <strong>Auth &amp; billing</strong> — SHA-256-digested API keys instead of Clerk + Stripe; billing
-          is deferred.
+          <strong>Observability</strong> — <code>tracing</code> spans + a JSON{" "}
+          <code>/api/metrics</code> time-series; Prometheus scrape endpoint deferred.
         </li>
         <li>
-          <strong>Observability</strong> — <code>tracing</code> spans + a JSON <code>/api/metrics</code>{" "}
-          time-series; a Prometheus-format <code>/metrics</code> scrape endpoint is deferred.
+          <strong>Supply-chain CI</strong> — <code>cargo audit</code> /{" "}
+          <code>cargo deny</code> are not yet wired into CI; crates not yet published to
+          crates.io / npm.
         </li>
       </ul>
-      <p>
-        Other open items: <code>cargo audit</code> / <code>cargo deny</code> are not yet wired into CI;
-        examples exist under <code>examples/</code> but CI does not execute them; crates are not yet
-        published to crates.io / npm; client-compatibility is validated against <code>@solana/web3.js</code>{" "}
-        but not yet the <code>@solana/kit</code> or Rust <code>solana-client</code> matrices.
-      </p>
 
       <H2 id="faq">FAQ</H2>
       <div className="mt-2 divide-y divide-border border-y border-border">
@@ -235,10 +267,10 @@ assert!(report.is_valid());
 
       <CodeBlock
         lang="bash"
-        filename="the Phase 3 trust layer in three commands"
-        code={`rustag attest -s demo                       # -> .rustag/demo.attestation.json (signed, Merkle-rooted)
-rustag verify demo.attestation.json -s demo # offline; exits non-zero if INVALID
-rustag scan -s demo --fail-on high          # CI gate: exits non-zero at/above 'high'`}
+        filename="the GroundTruth trust layer in three commands"
+        code={`rustag rehearse --proposal <PUBKEY> --rpc $RPC   # → bundle.json + closure.json (signed, Grade A)
+rustag verify bundle.json --closure closure.json  # offline; exits non-zero if INVALID
+rustag rehearse --proposal <PUBKEY> --rpc $RPC --fail-on high  # CI gate: exit 1 on HIGH/CRITICAL alarms`}
       />
     </DocArticle>
   );

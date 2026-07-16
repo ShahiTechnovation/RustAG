@@ -22,28 +22,28 @@ const TOC: TocItem[] = [
   { id: "state-machine", title: "Account state machine" },
   { id: "transitions", title: "Transitions", depth: 3 },
   { id: "oracles", title: "Oracle freshness" },
-  { id: "why-staging", title: "Why staging, not testnet" },
+  { id: "why-staging", title: "Why this enables independent verification" },
 ];
 
 const STATE_ROWS = [
-  { state: "Unknown" as const, meaning: "Never fetched; pulled lazily on first access.", sync: false },
-  { state: "Clean" as const, meaning: "A faithful mainnet copy.", sync: true },
-  { state: "Dirty" as const, meaning: "Modified by a local transaction.", sync: false },
-  { state: "Pinned" as const, meaning: "Set via the override API.", sync: false },
+  { state: "Unknown" as const, meaning: "Never fetched. Resolved on first access during closure resolution.", sync: false },
+  { state: "Clean" as const, meaning: "Content-addressed from mainnet at a known slot. Used as the sealed pre-state root.", sync: true },
+  { state: "Dirty" as const, meaning: "Modified by the rehearsed payload. Captured in the post-state root.", sync: false },
+  { state: "Pinned" as const, meaning: "Explicitly patched by forensics mode. Locked to the overridden ELF/data.", sync: false },
 ];
 
 const MATRIX = [
-  { tool: "solana-test-validator", cells: [false, true, false, false, false] },
-  { tool: "LiteSVM / Bankrun (libs)", cells: [false, false, false, true, false] },
-  { tool: "Devnet / Testnet", cells: [false, true, false, false, false] },
-  { tool: "RustAG", cells: [true, true, true, true, true], highlight: true },
+  { tool: "solana-test-validator", cells: [false, false, false, false, false], highlight: false },
+  { tool: "LiteSVM / Bankrun (libs)", cells: [false, false, false, false, false], highlight: false },
+  { tool: "simulateTransaction (RPC)", cells: [true, false, false, false, false], highlight: false },
+  { tool: "RustAG GroundTruth", cells: [true, true, true, true, true], highlight: true },
 ];
 const MATRIX_COLS = [
-  "Real mainnet state",
-  "Persistent + RPC",
-  "Real-time oracles",
-  "Unlimited airdrop",
-  "Cloud / multi-tenant",
+  "Real mainnet pre-state",
+  "Signed attestation",
+  "Semantic diff",
+  "Invariant alarms",
+  "Offline verifiable",
 ];
 
 export default function ConceptsPage() {

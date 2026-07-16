@@ -10,38 +10,58 @@ import { PhaseBadge } from "@/components/docs/PhaseBadge";
 export const metadata: Metadata = {
   title: "SDK & API",
   description:
-    "The @rustag/sdk TypeScript client, the REST API contract, and the Solana JSON-RPC + WebSocket methods a stagenet implements.",
+    "The @rustag/sdk TypeScript client, POST /api/rehearse and POST /api/verify REST endpoints, and the Solana JSON-RPC surface used during closure resolution.",
 };
 
 const TOC: TocItem[] = [
   { id: "typescript-sdk", title: "TypeScript SDK" },
   { id: "construction", title: "Construction", depth: 3 },
-  { id: "methods", title: "Client methods", depth: 3 },
+  { id: "rehearse-verify", title: "Rehearse & verify", depth: 3 },
+  { id: "other-methods", title: "Other methods", depth: 3 },
   { id: "rest-api", title: "REST API" },
-  { id: "rpc", title: "JSON-RPC compatibility" },
+  { id: "rest-core", title: "Core endpoints", depth: 3 },
+  { id: "rest-stagenet", title: "Stagenet dev endpoints", depth: 3 },
+  { id: "rpc", title: "JSON-RPC (closure resolution)" },
   { id: "websocket", title: "WebSocket subscriptions", depth: 3 },
 ];
 
-const REST_ROWS: [string, string, string][] = [
-  ["GET /api/health", "—", "{ status: \"ok\" }"],
+// Core GroundTruth REST endpoints
+const REST_CORE: [string, string, string][] = [
+  ["GET /api/health", "—", "{ status: \"ok\", version }"],
+  [
+    "POST /api/rehearse",
+    "{ proposal?, payload?, rpc?, demo?, failOn? }",
+    "EvidenceBundle JSON — signed, with pre/post state roots, semantic diff, alarms, grade",
+  ],
+  [
+    "POST /api/verify",
+    "{ bundle, closure }",
+    "{ valid: bool, grade, alarms, signer } — offline verification, no RPC needed",
+  ],
+  [
+    "POST /api/forensics",
+    "{ signature, rpc, patch?, patchProgram? }",
+    "{ verdict: 'BLOCKED' | 'REPRODUCED', diff, logs }",
+  ],
+];
+
+// Stagenet dev / dashboard endpoints
+const REST_STAGENET: [string, string, string][] = [
   [
     "GET /api/stagenet",
     "—",
-    "id, name, network, slot, rpcUrl, wsUrl, mirrorEnabled, mainnetRpc, accounts, transactions, dirtyAccounts",
+    "id, name, network, slot, rpcUrl, wsUrl, mirrorEnabled, accounts, transactions, dirtyAccounts",
   ],
   ["GET /api/accounts", "?limit (1–1000, def 100) &offset", "{ accounts: [...] }, newest-touched first"],
   [
     "GET /api/accounts/{pubkey}",
     "—",
-    "one account (lazily mirrored); 404 if missing, 400 on invalid pubkey",
+    "one account (lazily mirrored from mainnet); 404 if missing",
   ],
   ["GET /api/transactions", "?limit (1–500, def 50)", "{ transactions: [...] }, newest first"],
   ["POST /api/airdrop", "{ pubkey, sol }", "{ signature, lamports }"],
   ["POST /api/override", "{ pubkey, lamports?, tokenBalance? }", "{ ok: true }"],
   ["POST /api/preload", "{ programs: [...] }", "{ loaded, unknown }"],
-];
-
-const REST_ROWS_P2: [string, string, string][] = [
   ["GET /api/schedules", "—", "{ schedules: [...] }"],
   ["POST /api/schedules", "{ name, schedule, action }", "the created Schedule"],
   ["DELETE /api/schedules/{id}", "—", "{ ok: <removed> }"],
@@ -59,9 +79,9 @@ const RPC_ROWS: [string, string][] = [
   ["getLatestBlockhash", "{ blockhash, lastValidBlockHeight } (slot + 150)."],
   ["isBlockhashValid", "Always true — the stagenet blockhash never expires."],
   ["getMinimumBalanceForRentExemption", "[dataLen] → lamports."],
-  ["getBalance", "[pubkey] → { context, value }; lazily mirrors."],
+  ["getBalance", "[pubkey] → { context, value }; lazily mirrors from mainnet."],
   ["getAccountInfo", "[pubkey, {encoding}] → base64 account or null; lazily mirrors."],
-  ["getMultipleAccounts", "[[pubkey,…], {encoding}]."],
+  ["getMultipleAccounts", "[[pubkey,…], {encoding}] — used by the ingest layer during closure resolution."],
   ["getProgramAccounts", "[programId, {filters}] → owned accounts; honors dataSize & memcmp (≤10000)."],
   ["getTokenAccountBalance", "[tokenAccount] → SPL amount."],
   ["requestAirdrop", "[pubkey, lamports] → signature."],
@@ -107,15 +127,15 @@ export default function SdkPage() {
     <DocArticle
       eyebrow="Reference"
       title="SDK & API"
-      lead="Three ways to drive a stagenet: the @rustag/sdk TypeScript client over REST, the raw REST contract the dashboard and SDK sit on, and the Solana-compatible JSON-RPC your existing tooling already speaks."
+      lead="Three ways to drive RustAG: the @rustag/sdk TypeScript client over REST, the raw REST contract the dashboard sits on, and the Solana-compatible JSON-RPC used during closure resolution."
       toc={TOC}
     >
       <H2 id="typescript-sdk">TypeScript SDK</H2>
       <p>
-        The <code>@rustag/sdk</code> package exposes a single client class, <code>RustagClient</code>, that
-        wraps a running stagenet&apos;s REST API (default base <code>http://localhost:9000</code>). It
-        targets the REST surface, not the Solana JSON-RPC port — for transactions you point a{" "}
-        <code>@solana/web3.js</code> <code>Connection</code> at the stagenet&apos;s RPC URL instead.
+        The <code>@rustag/sdk</code> package exposes a single client class,{" "}
+        <code>RustagClient</code>, that wraps the running REST API (default base{" "}
+        <code>http://localhost:9000</code>). The primary surface is{" "}
+        <code>rehearse()</code> and <code>verify()</code>.
       </p>
 
       <H3 id="construction">Construction</H3>
@@ -123,125 +143,175 @@ export default function SdkPage() {
         lang="ts"
         code={`import { RustagClient } from "@rustag/sdk";
 
-const client = new RustagClient({ baseUrl: "http://localhost:9000" });`}
+const client = new RustagClient({ baseUrl: "http://localhost:9000" });
+// or against the hosted service:
+const client = new RustagClient({
+  baseUrl: "https://api.rustag.dev",
+  apiKey: process.env.RUSTAG_API_KEY,
+});`}
       />
       <p>
-        <code>RustagClientOptions</code> has two optional fields: <code>baseUrl</code> (default{" "}
-        <code>http://localhost:9000</code>; trailing slashes are stripped) and <code>fetch</code> (a custom{" "}
-        <code>fetch</code> implementation, e.g. for Node runtimes without a global <code>fetch</code>). The
-        default global <code>fetch</code> is bound to <code>globalThis</code> to avoid the browser&apos;s
-        &ldquo;Illegal invocation&rdquo; error; if no <code>fetch</code> is available, the constructor
-        throws. <code>getStagenet()</code> returns the stagenet&apos;s <code>rpcUrl</code>, which you can
-        hand straight to <code>@solana/web3.js</code>:
+        <code>RustagClientOptions</code>: <code>baseUrl</code> (default{" "}
+        <code>http://localhost:9000</code>; trailing slashes stripped), <code>apiKey</code>{" "}
+        (optional <code>Bearer rk_…</code> for the hosted service), and <code>fetch</code> (a
+        custom fetch implementation for Node runtimes without global <code>fetch</code>).
+      </p>
+
+      <H3 id="rehearse-verify">Rehearse & verify</H3>
+      <p>
+        These are the two primary methods — everything else is dashboard/stagenet tooling.
       </p>
       <CodeBlock
         lang="ts"
-        code={`const stagenet = await client.getStagenet();
-await client.airdrop(wallet, 1000);
+        code={`// Rehearse a Squads v4 proposal
+const bundle = await client.rehearse({
+  proposal: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
+  rpc: "https://mainnet.helius-rpc.com/?api-key=YOUR_KEY",
+  failOn: "high",   // throws if any HIGH/CRITICAL alarm fires
+});
 
-import { Connection } from "@solana/web3.js";
-const connection = new Connection(stagenet.rpcUrl); // http://127.0.0.1:8899`}
+console.log(bundle.grade);              // "A"
+console.log(bundle.alarms);            // [{ rule, severity, message }]
+console.log(bundle.semanticDiff);      // [{ type, ...fields }]
+console.log(bundle.preStateRoot);      // hex SHA-256 Merkle root
+console.log(bundle.postStateRoot);
+console.log(bundle.signerPubkey);      // attester Ed25519 pubkey
+
+// Rehearse a raw transaction
+const bundle2 = await client.rehearse({
+  payload: "<BASE64_TX>",
+  rpc: process.env.MAINNET_RPC,
+});
+
+// Built-in demo (no RPC needed)
+const demo = await client.rehearse({ demo: true });
+
+// Verify a bundle offline (no network)
+const report = await client.verify({
+  bundle: bundle,          // EvidenceBundle object or JSON string
+  closure: closureJson,    // portable closure JSON string
+});
+console.log(report.valid, report.grade); // true, "A"`}
       />
 
-      <H3 id="methods">Client methods</H3>
+      <H3 id="other-methods">Other methods</H3>
       <p>
-        <strong>Phase 1</strong> — available in the local MVP:
+        <strong>Stagenet & dashboard methods</strong> — these target the persistent stagenet
+        dev server (<code>rustag serve</code> or <code>rustag start</code>):
       </p>
       <ul>
         <li>
-          <code>health()</code> → <code>{"{ status }"}</code> — liveness check.
+          <code>health()</code> → <code>{"{ status, version }"}</code>
         </li>
         <li>
-          <code>getStagenet()</code> → <code>StagenetInfo</code> — id, name, network, slot, rpcUrl, wsUrl,
-          mirrorEnabled, mainnetRpc, and account/transaction/dirty counts.
+          <code>getStagenet()</code> → <code>StagenetInfo</code> — id, name, network, slot,
+          rpcUrl, wsUrl, accounts, transactions.
         </li>
         <li>
-          <code>listAccounts({"{ limit?, offset? }"})</code> → <code>AccountInfo[]</code> — newest-touched
-          first.
+          <code>listAccounts({"{ limit?, offset? }"})</code> → <code>AccountInfo[]</code>
         </li>
         <li>
-          <code>getAccount(pubkey)</code> → <code>AccountInfo</code> — lazily mirrored from mainnet if not
-          local.
+          <code>getAccount(pubkey)</code> → <code>AccountInfo</code> — lazily mirrored from
+          mainnet if not local.
         </li>
         <li>
-          <code>listTransactions({"{ limit? }"})</code> → <code>TransactionInfo[]</code>.
+          <code>listTransactions({"{ limit? }"})</code> → <code>TransactionInfo[]</code>
         </li>
         <li>
-          <code>airdrop(pubkey, sol)</code> → <code>{"{ signature, lamports }"}</code> — unlimited, instant,
-          free.
+          <code>airdrop(pubkey, sol)</code> → <code>{"{ signature, lamports }"}</code>
         </li>
         <li>
-          <code>overrideAccount(params)</code> → <code>{"{ ok }"}</code> — set <code>lamports</code> and/or
-          raw SPL <code>tokenBalance</code>.
+          <code>overrideAccount(params)</code> → <code>{"{ ok }"}</code>
         </li>
         <li>
-          <code>preload(programs)</code> → <code>{"{ loaded, unknown }"}</code>.
+          <code>preload(programs)</code> → <code>{"{ loaded, unknown }"}</code>
         </li>
       </ul>
       <p>
-        <strong>Phase 2</strong> <PhaseBadge phase={2} className="ml-1" /> — depends on the corresponding
-        background workers being enabled on the server:
+        <strong>Phase 2</strong> <PhaseBadge phase={2} className="ml-1" /> — scheduler /
+        analytics / simulation:
       </p>
       <ul>
         <li>
           <code>listSchedules()</code>, <code>createSchedule(params)</code>,{" "}
-          <code>deleteSchedule(id)</code>, <code>toggleSchedule(id, enabled)</code>.
+          <code>deleteSchedule(id)</code>, <code>toggleSchedule(id, enabled)</code>
         </li>
         <li>
           <code>getMetrics({"{ series?, limit? }"})</code> → analytics time-series, each point{" "}
-          <code>{"{ t, v }"}</code>.
+          <code>{"{ t, v }"}</code>
         </li>
         <li>
-          <code>simulate(transactions, {"{ label?, encoding? }"})</code> → <code>ScenarioReport</code> —
-          replay signed transactions against an isolated fork (the base is never mutated).
+          <code>simulate(transactions, {"{ label?, encoding? }"})</code> →{" "}
+          <code>ScenarioReport</code>
         </li>
       </ul>
       <CodeBlock
         lang="ts"
-        code={`await client.getStagenet();
-await client.listAccounts({ limit: 100 });
-await client.getAccount("<PUBKEY>");
-await client.airdrop("<PUBKEY>", 1000);
-await client.overrideAccount({ pubkey: "<PUBKEY>", lamports: 5_000_000_000 });
-await client.preload(["jupiter", "pyth", "raydium"]);
+        code={`// Full GroundTruth CI workflow in TypeScript
+import { RustagClient } from "@rustag/sdk";
 
-const report = await client.simulate([signedTxBase64], { label: "swap-scenario" });
-console.log(report.succeeded, "/", report.total, "ok in", report.durationMs, "ms");`}
+const client = new RustagClient({ baseUrl: process.env.RUSTAG_API_URL });
+
+// Rehearse and gate on severity
+const bundle = await client.rehearse({
+  proposal: process.env.PROPOSAL_PUBKEY,
+  rpc: process.env.MAINNET_RPC,
+  failOn: "high",
+});
+
+// Write the bundle + closure for archiving
+await fs.writeFile("bundle.json", JSON.stringify(bundle, null, 2));
+
+// Offline verify (zero network)
+const report = await client.verify({ bundle, closure: closureJson });
+if (!report.valid) process.exit(1);`}
       />
       <Callout variant="info">
-        Non-2xx responses are turned into a thrown <code>Error</code> of the form{" "}
-        <code>RustAG API &lt;status&gt; &lt;statusText&gt;: &lt;body&gt;</code>. A transfer schedule&apos;s{" "}
-        <code>secret_key</code> is redacted to <code>***redacted***</code> on read.
+        Non-2xx responses are thrown as <code>Error</code> of the form{" "}
+        <code>{"RustAG API <status> <statusText>: <body>"}</code>. The{" "}
+        <code>failOn</code> option causes <code>rehearse()</code> to throw before returning if
+        any alarm meets or exceeds the given severity.
       </Callout>
 
       <H2 id="rest-api">REST API</H2>
+
+      <H3 id="rest-core">Core GroundTruth endpoints</H3>
       <p>
-        The REST API is an <code>axum</code> router mounted under <code>/api</code>, served on{" "}
-        <code>http://127.0.0.1:9000</code> by default. It is the surface consumed by the dashboard and the
-        SDK; CORS is permissive.
+        These endpoints are served on <code>http://127.0.0.1:9000</code> by default (or{" "}
+        <code>$PORT</code> on Render). CORS is permissive.
       </p>
-      <RestTable rows={REST_ROWS} />
-      <p>
-        <strong>Phase 2</strong> <PhaseBadge phase={2} className="ml-1" /> endpoints — require the scheduler
-        / metrics / simulation workers to be enabled:
-      </p>
-      <RestTable rows={REST_ROWS_P2} />
+      <RestTable rows={REST_CORE} />
       <CodeBlock
         lang="bash"
-        filename="airdrop via REST"
-        code={`curl -s http://127.0.0.1:9000/api/airdrop \\
+        filename="rehearse via REST"
+        code={`# Rehearse a Squads v4 proposal
+curl -s http://127.0.0.1:9000/api/rehearse \\
   -H 'content-type: application/json' \\
-  -d '{"pubkey":"<PUBKEY>","sol":1000}'
-# => { "signature": "...", "lamports": 1000000000000 }`}
+  -d '{
+    "proposal": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
+    "rpc": "https://mainnet.helius-rpc.com/?api-key=YOUR_KEY"
+  }' | jq '{grade, alarms: .alarms | length}'
+
+# Verify a bundle offline
+curl -s http://127.0.0.1:9000/api/verify \\
+  -H 'content-type: application/json' \\
+  -d '{"bundle": <BUNDLE_JSON>, "closure": <CLOSURE_JSON>}'`}
       />
 
-      <H2 id="rpc">JSON-RPC compatibility</H2>
+      <H3 id="rest-stagenet">Stagenet dev endpoints</H3>
       <p>
-        A stagenet speaks a Solana-compatible JSON-RPC dialect, so a wallet or a <code>@solana/web3.js</code>{" "}
-        <code>Connection</code> can point at it and just work. The RPC server listens on{" "}
-        <code>http://127.0.0.1:8899</code> and accepts a JSON-RPC 2.0 body at <code>POST /</code>; both
-        single requests and batch arrays are supported. The advertised version is{" "}
-        <code>{"{ solana-core: 2.1.0, feature-set: 0 }"}</code>.
+        Used by the dashboard and the stagenet development surface. Require a running stagenet
+        (<code>rustag serve</code> or <code>rustag start</code>):
+      </p>
+      <RestTable rows={REST_STAGENET} />
+
+      <H2 id="rpc">JSON-RPC (closure resolution)</H2>
+      <p>
+        The stagenet speaks a Solana-compatible JSON-RPC dialect on{" "}
+        <code>http://127.0.0.1:8899</code>. This is primarily used by the ingest layer during
+        closure resolution (<code>getMultipleAccounts</code>) — but you can also point any{" "}
+        <code>@solana/web3.js</code> <code>Connection</code> at it for integration testing.
+        Both single requests and batch arrays are supported.
       </p>
 
       <div className="my-6 overflow-x-auto rounded-[4px] border border-border">
@@ -267,48 +337,50 @@ console.log(report.succeeded, "/", report.total, "ok in", report.durationMs, "ms
         </table>
       </div>
       <p>
-        Any method outside this list returns JSON-RPC error <code>-32601</code> (&ldquo;method not
-        found&rdquo;). Encoded transactions are decoded as base58 first, falling back to base64, unless an
-        explicit <code>encoding</code> is supplied.
+        Any method outside this list returns JSON-RPC error <code>-32601</code>{" "}
+        (&ldquo;method not found&rdquo;). Encoded transactions are decoded as base58 first,
+        falling back to base64, unless an explicit <code>encoding</code> is supplied.
       </p>
       <CodeBlock
         lang="ts"
         code={`import { Connection } from "@solana/web3.js";
 
+// Point at the stagenet RPC for integration testing
 const connection = new Connection("http://127.0.0.1:8899");
 const balance = await connection.getBalance(pubkey);
-await connection.requestAirdrop(pubkey, 2_000_000_000);`}
+await connection.requestAirdrop(pubkey, 2_000_000_000); // 2 SOL, no faucet limit`}
       />
 
       <H3 id="websocket">WebSocket subscriptions</H3>
       <p>
-        The WebSocket server listens on <code>ws://127.0.0.1:8900</code>. In Phase 1 subscriptions are
-        poll-based (≈1s interval):
+        The WebSocket server listens on <code>ws://127.0.0.1:8900</code>. In Phase 1
+        subscriptions are poll-based (≈1s interval):
       </p>
       <ul>
         <li>
           <code>accountSubscribe</code> → returns a subscription id, then pushes an{" "}
-          <code>accountNotification</code> whenever the account&apos;s <code>(lamports, data length)</code>{" "}
-          fingerprint changes.
+          <code>accountNotification</code> whenever the account&apos;s{" "}
+          <code>(lamports, data length)</code> fingerprint changes.
         </li>
         <li>
           <code>signatureSubscribe</code> → one-shot; fires once the transaction is found, then
           auto-cancels. This is what <code>@solana/web3.js</code> uses, so{" "}
-          <code>sendAndConfirmTransaction</code> / <code>confirmTransaction</code> work out of the box.
+          <code>sendAndConfirmTransaction</code> / <code>confirmTransaction</code> work out of
+          the box.
         </li>
         <li>
-          <code>slotSubscribe</code> → accepted for compatibility, but no slot stream is emitted.
+          <code>slotSubscribe</code> → accepted for compatibility; no slot stream is emitted.
         </li>
         <li>
-          <code>accountUnsubscribe</code> / <code>signatureUnsubscribe</code> / <code>slotUnsubscribe</code>{" "}
-          → cancel a subscription.
+          <code>accountUnsubscribe</code> / <code>signatureUnsubscribe</code> /{" "}
+          <code>slotUnsubscribe</code> → cancel a subscription.
         </li>
       </ul>
       <Callout variant="early" title="Realtime push is Phase 2">
-        An optional <code>realtime</code> feature adds a server-side push mirror: when enabled (and a{" "}
-        <code>realtime_ws</code> upstream is configured) the server subscribes to the oracle registry over{" "}
-        <code>accountSubscribe</code> upstream with a reconnect loop, replacing the poll. Build with{" "}
-        <code>--features realtime</code>.
+        An optional <code>realtime</code> Cargo feature adds a server-side push mirror: when
+        enabled (and a <code>realtime_ws</code> upstream is configured) the server subscribes
+        to the oracle registry over <code>accountSubscribe</code> upstream with a reconnect
+        loop, replacing the poll. Build with <code>--features realtime</code>.
       </Callout>
     </DocArticle>
   );
