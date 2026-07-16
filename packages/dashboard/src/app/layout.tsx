@@ -36,13 +36,11 @@ const serif = Instrument_Serif({
 
 export const metadata: Metadata = {
   title: {
-    default: "RustAG - A staging Solana that mirrors mainnet",
+    default: "RustAG · Attested Pre-Execution Assurance for Solana",
     template: "%s · RustAG",
   },
   description:
-    "RustAG is Tenderly Virtual TestNets for Solana - a persistent, mainnet-mirroring staging environment. Test against real on-chain state with zero SOL spent and unlimited airdrops.",
-  // Prefer an explicit site URL, else the Vercel production URL at build time,
-  // so OG/Twitter image URLs resolve to the real deployed domain.
+    "RustAG is the GroundTruth layer for Solana — a cryptographically attested pre-execution rehearsal engine. Know exactly what a transaction does before any multisig signer approves it.",
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL ??
       (process.env.VERCEL_PROJECT_PRODUCTION_URL
@@ -50,17 +48,17 @@ export const metadata: Metadata = {
         : "https://rustag.dev"),
   ),
   openGraph: {
-    title: "RustAG - A staging Solana that mirrors mainnet",
+    title: "RustAG · GroundTruth Pre-Execution Assurance for Solana",
     description:
-      "Test Solana programs against real mainnet state. Zero SOL spent. Unlimited airdrops. Time-travel replay, verifiable attestation, MEV simulation.",
+      "Rehearse any Solana transaction against faithful mainnet state. Get a signed, offline-verifiable EvidenceBundle before a single multisig signer approves.",
     type: "website",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "RustAG - a staging Solana that mirrors mainnet" }],
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "RustAG — pre-execution assurance for Solana" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "RustAG - A staging Solana that mirrors mainnet",
+    title: "RustAG · GroundTruth for Solana",
     description:
-      "Test Solana programs against real mainnet state. Zero SOL spent. Unlimited airdrops.",
+      "Know exactly what a privileged transaction does before you sign it. Signed EvidenceBundle, semantic diff, invariant alarms.",
     images: ["/og.png"],
   },
 };

@@ -3,13 +3,15 @@
 import {
   BadgeCheck,
   CalendarClock,
-  Coins,
+  FileSearch,
   FlaskConical,
+  GitBranch,
   History,
   Layers,
   LineChart,
   Radio,
   ShieldAlert,
+  Squircle,
 } from "lucide-react";
 
 import type { AccountInfo, SyncState } from "@rustag/sdk";
@@ -21,13 +23,13 @@ function short(pk: string) {
   return pk.length > 10 ? `${pk.slice(0, 4)}…${pk.slice(-4)}` : pk;
 }
 
-/** Real transaction count from the live demo (mostly the heartbeat's airdrops). */
-function LiveAirdrops() {
+/** Real transaction count from the live demo backend. */
+function LiveTxCount() {
   const { data } = useStagenet();
   return (
     <div className="font-mono text-sm text-brand">
       <AnimatedNumber value={data?.transactions ?? 0} />{" "}
-      <span className="text-faint">txs on the live demo</span>
+      <span className="text-faint">rehearsals on the live demo</span>
     </div>
   );
 }
@@ -60,91 +62,124 @@ function MirrorPills() {
   );
 }
 
+/** Simulated alarm pills for the invariant card. */
+function AlarmPills() {
+  const alarms = [
+    { rule: "upgrade-authority", sev: "HIGH", color: "text-yellow-400" },
+    { rule: "nonce-authority-combo", sev: "CRITICAL", color: "text-red-400" },
+    { rule: "large-sol-drain", sev: "HIGH", color: "text-yellow-400" },
+  ];
+  return (
+    <div className="mt-2 space-y-2">
+      {alarms.map((a) => (
+        <div
+          key={a.rule}
+          className="flex items-center justify-between rounded-[3px] border border-border bg-subtle px-3 py-2 text-xs"
+        >
+          <span className="font-mono text-faint">{a.rule}</span>
+          <span className={`font-mono font-bold ${a.color}`}>{a.sev}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function FeatureBento() {
   return (
     <Section
       id="features"
       eyebrow="Everything you need"
-      title="A complete staging layer for Solana"
-      description="From lazy mirroring to verifiable attestation - the full toolkit for testing programs against real on-chain state."
+      title="The GroundTruth assurance stack"
+      description="From Squads proposal decoding to counterfactual forensics — the complete toolkit for pre-execution assurance on Solana."
     >
       <Reveal>
         <div className="grid auto-rows-[minmax(0,1fr)] grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {/* Featured */}
+
+          {/* Featured: Sealed Rehearsal */}
           <BentoCard
             className="lg:col-span-2 lg:row-span-2"
             index="01"
             accent="var(--brand)"
-            icon={<Layers size={20} />}
-            title="Lazy mainnet mirror"
-            description="Accounts are fetched from mainnet on first access, cached, and tracked through a Clean → Dirty → Pinned lifecycle. Replay mainnet on a local SVM - no block hash, no fork required."
+            icon={<BadgeCheck size={20} />}
+            title="Sealed pre-execution rehearsal"
+            description="Two-pass deterministic execution in a sealed LiteSVM sandbox. Pass 1 discovers all touched accounts. Pass 2 re-executes with zero live RPC calls, producing a SHA-256 content-addressed state root — Grade A means anyone can re-verify."
             media={<MirrorPills />}
           />
 
+          {/* Squads v4 Integration */}
           <BentoCard
             index="02"
-            icon={<Radio size={20} />}
+            icon={<Squircle size={20} />}
             accent="var(--brand)"
-            title="Real-time oracle mirror"
-            description="Sub-second oracle refresh via accountSubscribe WebSocket - Pyth prices push to your stagenet, not poll."
+            title="Squads v4 native"
+            description="Paste a VaultTransaction proposal pubkey. RustAG fetches, Borsh-decodes, and rehearses it — threshold, approval count, and all — before a single signer touches Approve."
           />
 
+          {/* Invariant Alarms */}
           <BentoCard
             index="03"
-            icon={<Coins size={20} />}
+            icon={<ShieldAlert size={20} />}
             accent="var(--brand)"
-            title="Unlimited free airdrops"
-            description="No faucet limits. Credit any wallet instantly with zero mainnet SOL spent."
-            media={<LiveAirdrops />}
+            title="6-rule invariant policy"
+            description="Upgrade authority rotation, program freeze, new durable-nonce, SOL drain (>80%), and the Drift attack pattern (nonce + authority combo) all trigger typed alarms."
+            media={<AlarmPills />}
           />
 
+          {/* N-of-M Provenance */}
           <BentoCard
             index="04"
-            icon={<CalendarClock size={20} />}
+            icon={<Radio size={20} />}
             accent="var(--brand)"
-            title="Activity scheduler"
-            description="Recurring on-chain actions on @every or cron - simulate steady, lifelike usage."
+            title="N-of-M RPC provenance"
+            description="Cross-fetch the closure from N independent RPC endpoints, require M-of-N agreement. InputProvenance is embedded in every bundle — the closure can't be silently manipulated."
           />
 
+          {/* Forensics / Counterfactual */}
           <BentoCard
             index="05"
-            icon={<FlaskConical size={20} />}
+            icon={<FileSearch size={20} />}
             accent="var(--brand)"
-            title="Simulation & stress"
-            description="Fork the stagenet, replay thousands of txs, and compare outcomes without mutating the base."
+            title="Counterfactual forensics"
+            description="Re-execute a historical transaction by signature. Use --patch to substitute a candidate ELF — get back BLOCKED or REPRODUCED. Answer: would our fix have stopped the Drift attack?"
+            media={<LiveTxCount />}
           />
 
+          {/* Upgrade CI Gate */}
           <BentoCard
             index="06"
-            icon={<History size={20} />}
+            icon={<GitBranch size={20} />}
             accent="var(--brand)"
-            title="Time-travel replay"
-            description="Checkpoints, transaction journals, and fork-of-fork lineage - replay deterministically and diff any two points."
+            title="Upgrade-rehearsal CI gate"
+            description="GitHub Action records real mainnet traffic for a watched program, replays against the candidate bytecode, and fails CI on new invariant alarms. PR comment shows the semantic diff."
           />
 
+          {/* Verifiable Attestation */}
           <BentoCard
             index="07"
-            icon={<BadgeCheck size={20} />}
+            icon={<Layers size={20} />}
             accent="var(--brand)"
-            title="Verifiable attestation"
-            description="SHA-256 Merkle commitment + Ed25519 signing. Prove you tested against exactly this state, offline."
+            title="Ed25519-signed EvidenceBundle"
+            description="Every rehearsal produces a tamper-evident, offline-verifiable bundle: pre/post state roots, semantic diff, alarms, compute, signer pubkey. Verify with zero network dependency."
           />
 
+          {/* Time-series analytics */}
           <BentoCard
             index="08"
             icon={<LineChart size={20} />}
             accent="var(--brand)"
             title="Time-series analytics"
-            description="TVL, transaction volume, and mirror growth - sampled and charted in real time."
+            description="TVL, transaction volume, and mirror growth — sampled and charted in real time against the live demo."
           />
 
+          {/* Simulation & stress */}
           <BentoCard
             index="09"
-            icon={<ShieldAlert size={20} />}
+            icon={<FlaskConical size={20} />}
             accent="var(--brand)"
-            title="MEV, fuzz & exploit scan"
-            description="Jito-style atomic bundles, deterministic invariant fuzzing, and reproducible exploit signatures."
+            title="Fork, stress & replay"
+            description="Fork the stagenet, replay real traffic corpora, and compare outcomes across candidate program versions without mutating the base."
           />
+
         </div>
       </Reveal>
     </Section>

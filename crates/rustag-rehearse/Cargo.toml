@@ -1,0 +1,37 @@
+[package]
+name = "rustag-rehearse"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "GroundTruth sealed pre-execution rehearsal: rehearse a privileged Solana payload against pinned mainnet state and emit a signed, offline-verifiable EvidenceBundle"
+keywords = ["solana", "multisig", "attestation", "security", "svm"]
+categories = ["development-tools", "cryptography"]
+
+[dependencies]
+rustag-core.workspace = true
+rustag-replay.workspace = true
+rustag-attest.workspace = true
+rustag-sim.workspace = true
+
+solana-pubkey.workspace = true
+solana-message.workspace = true
+solana-transaction.workspace = true
+solana-keypair.workspace = true
+
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+hex.workspace = true
+bincode.workspace = true
+chrono.workspace = true
+uuid.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+solana-signer.workspace = true
+solana-system-interface.workspace = true
+solana-hash.workspace = true

@@ -1,99 +1,256 @@
-# RustAG Architecture
+# RustAG Architecture: The GroundTruth Pre-Execution Assurance Layer
 
-RustAG turns [LiteSVM](https://github.com/LiteSVM/litesvm) — an in-process Solana VM —
-into a *persistent, mainnet-mirroring* staging environment. This document explains how
-the pieces fit together and why.
+## Overview
 
-## Crate graph
+RustAG is a **pre-execution assurance infrastructure** for privileged Solana
+operations. It produces cryptographically signed, offline-verifiable evidence
+that a proposed transaction does exactly what its human author intends —
+*before any multisig signer approves it*.
+
+This document describes the technical architecture that enables that guarantee.
+
+---
+
+## The Two-Layer Model
 
 ```
-rustag-cli ─┬─► rustag-rpc ──► rustag-core ──► rustag-mirror
-            ├──────────────────► rustag-core
-            └──────────────────────────────────► (registry)
+┌─────────────────────────────────────────────────────────────────┐
+│  LAYER 1: INGEST                                                 │
+│  rustag-mirror                                                    │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐   │
+│  │ TouchSet     │  │ SquadsDecoder│  │  MultiRpcFetcher     │   │
+│  │ Resolver     │  │ (Squads v4)  │  │  (N-of-M provenance) │   │
+│  │ ALT expand   │  │ proposal →   │  │  N endpoints agree?  │   │
+│  │ ProgramData  │  │ VersionedTx  │  │  InputProvenance     │   │
+│  └──────────────┘  └──────────────┘  └──────────────────────┘   │
+│  ┌──────────────────────────────────────────────────────────┐    │
+│  │  ForwardRecorder (Phase 3): real mainnet traffic corpus  │    │
+│  └──────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+         │ Closure (content-addressed account snapshots)
+         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  LAYER 2: SEALED REHEARSAL                                       │
+│  rustag-core + rustag-rehearse + rustag-sim                      │
+│                                                                  │
+│  SealedRehearsal::run()                                          │
+│  ┌──────────────────────────────────────────────────────────┐    │
+│  │  Pass 1 — DISCOVERY                                      │    │
+│  │  Dry-run payload in offline LiteSVM → capture all        │    │
+│  │  touched account keys (including CPI-touched accounts)   │    │
+│  └──────────────────────────────────────────────────────────┘    │
+│  ┌──────────────────────────────────────────────────────────┐    │
+│  │  Pass 2 — EXECUTION                                      │    │
+│  │  Re-execute in sealed LiteSVM (mirror disabled):         │    │
+│  │  • pre_state_root = SHA256(closure)                      │    │
+│  │  • run payload                                           │    │
+│  │  • post_state_root = SHA256(post-state)                  │    │
+│  │  • semantic diff (SemanticChange[])                      │    │
+│  │  • invariant scan (Alarm[])                              │    │
+│  └──────────────────────────────────────────────────────────┘    │
+│         │                                                         │
+│         ▼ Signs with Ed25519                                      │
+│  EvidenceBundle { manifest, findings, signature }                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-- **`rustag-mirror`** — a dependency-light read-side. Given pubkeys, it returns their
-  current mainnet state via a raw `getMultipleAccounts` JSON-RPC call over `reqwest`.
-  It deliberately avoids `solana-rpc-client`, which would fork the Solana crate versions
-  that LiteSVM 0.12 unifies on (the 3.x line). It owns the **known-program registry**.
-- **`rustag-core`** — the engine. Owns the `LiteSVM` instance, the SQLite store, the
-  account-state machine, and the lazy-mirror logic.
-- **`rustag-rpc`** — a Solana-compatible JSON-RPC + WebSocket server and a REST API for
-  the dashboard, all built on `axum`.
-- **`rustag-cli`** — the `rustag` binary.
+---
 
-## The account-state machine
+## Core Components
 
-Every account carries one of four sync states (`crates/rustag-core/src/account_state.rs`):
+### rustag-mirror: Faithful State Ingest
 
-| State     | Meaning                                            | Background sync? |
-| --------- | -------------------------------------------------- | ---------------- |
-| `Unknown` | Never fetched; fetched lazily on first access.     | n/a              |
-| `Clean`   | A faithful mainnet copy.                           | **Yes**          |
-| `Dirty`   | Modified by a local transaction.                   | Never            |
-| `Pinned`  | Set via the override API.                          | Never            |
+The mirror is a **pure read-side** — it never writes to mainnet. Its
+responsibility is producing a pinned, content-addressable snapshot of every
+account a proposed payload will read or write.
 
-This is the crux of "mainnet replay" on the SVM. EVM tools fork at a block hash; Solana
-has no equivalent, so RustAG fetches accounts on demand and tracks writes so it knows
-what it may and may not refresh.
+**TouchSetResolver** computes the full account closure:
+- Static keys from the message header
+- Lookup-table-resolved keys (v0 transactions)
+- ProgramData accounts (the real bytecode + upgrade authority)
+- The Clock sysvar (for time-dependent logic)
 
-## Transaction lifecycle
+**SquadsDecoder** fetches and Borsh-decodes a Squads v4 `VaultTransaction`
+proposal account, extracting the raw `TransactionMessage` bytes and metadata
+(multisig address, vault index, threshold, approval count).
 
-`Stagenet::send_transaction` (`crates/rustag-core/src/stagenet.rs`):
+**MultiRpcFetcher** cross-fetches the closure from N independent RPC endpoints
+and requires M-of-N agreement before accepting an account's state. Records
+`InputProvenance` for every fetched account (which endpoints agreed, at which
+slot).
 
-1. **Pre-load** — extract the transaction's static account keys; for each one that is not
-   already loaded and not `Dirty`, batch-fetch it from mainnet and load it into LiteSVM
-   as `Clean`. Fetch failures are logged and tolerated.
-2. **Execute** — run the transaction through LiteSVM (signature + blockhash checks on).
-3. **Track writes** — derive the *writable* accounts from the message header and mark
-   them `Dirty`, persisting their post-state from the SVM. Read-only accounts (programs,
-   oracles, sysvars) stay `Clean` and keep syncing.
-4. **Index** — record the transaction (signature, success, fee, compute units, programs,
-   logs) for the dashboard and `rustag logs`.
+**ForwardRecorder** (Phase 3) polls `getSignaturesForAddress` to build a corpus
+of real mainnet traffic for a watched program. Used as input to the
+upgrade-rehearsal CI gate.
 
-Writable accounts are computed from the message header's
-`(num_required_signatures, num_readonly_signed, num_readonly_unsigned)` layout.
+---
 
-## Background oracle sync
+### rustag-core: The SVM Runtime
 
-`spawn_oracle_sync` (`crates/rustag-core/src/sync.rs`) wakes on an interval (30s by
-default), takes a write lock on the stagenet, and calls `refresh_clean_oracles`, which
-re-fetches every `Clean` account tagged `Oracle` from mainnet. `Dirty`/`Pinned` accounts
-are skipped, so user-modified state is never clobbered.
+**Stagenet** wraps LiteSVM with:
+- **Lazy mainnet mirroring** — accounts fetched from mainnet on first access
+- **Dirty/clean tracking** — locally-modified accounts frozen from re-sync
+- **Upgradeable program loading** — `load_upgradeable_program` follows the
+  `Program → ProgramData` pointer and calls `LiteSVM::add_program` to register
+  the real ELF for execution
+- **Clock pinning** — `sync_clock(slot, unix_ts)` pins the sysvar for
+  time-dependent rehearsal
+- **Unlimited airdrops** — for test setup
+- **SQLite persistence** — state survives process restarts
 
-## Persistence
+---
 
-SQLite via `sqlx` (`crates/rustag-core/src/account_store.rs`), using the runtime query
-API (no compile-time `DATABASE_URL` needed). Three tables: `stagenets`, `accounts`,
-`transactions` (`migrations/001_initial.sql`). On `rustag start`, the stored accounts are
-rehydrated into a fresh LiteSVM instance, so a stagenet survives restarts. The schema is
-Postgres-portable for Phase 2.
+### rustag-rehearse: The Sealed Two-Pass Algorithm
 
-## RPC compatibility
+`SealedRehearsal::run()` executes the two-pass algorithm that produces a
+`Grade A` (deterministically re-executable) evidence bundle:
 
-`rustag-rpc` implements the subset of the Solana JSON-RPC API that a wallet or
-`@solana/web3.js` `Connection` needs: `getAccountInfo`, `getBalance`,
-`getMultipleAccounts`, `getProgramAccounts`, `getLatestBlockhash`, `sendTransaction`,
-`simulateTransaction`, `requestAirdrop`, `getSignatureStatuses`, `getTransaction`, and
-friends. A minimal poll-based `accountSubscribe` is served over WebSocket. See
-[`api-reference.md`](api-reference.md).
+**Pass 1 — Discovery**: Runs the payload in an offline LiteSVM, ignoring
+execution failure. Captures every account the payload touched (including
+CPI-touched accounts that the static key set might not include).
 
-## Address lookup tables (v0 transactions)
+**Pass 2 — Execution**: Creates a second offline LiteSVM loaded with exactly
+the closure from Pass 1. Re-runs the payload. This run is sealed: no live RPC
+calls, no non-determinism. Records:
+- `pre_state_root` = SHA256 over all (pubkey, data, lamports, owner) tuples
+- `post_state_root` = SHA256 over the post-execution state
+- `success` and `compute_units`
 
-`send_transaction`/`simulate_transaction` call `prepare_accounts`, which — for a
-`VersionedMessage::V0` — fetches the lookup-table accounts named in
-`address_table_lookups`, deserializes them, and pre-loads every resolved address before
-execution (and includes the writable resolved addresses in dirty tracking). This lets v0
-DeFi transactions read real mainnet state through the mirror instead of failing with
-`LookupTableAccountNotFound`.
+The bundle is then signed with Ed25519 over all of the above. A verifier can
+re-derive both roots independently and re-run the payload to confirm
+`post_state_root`.
 
-## Known limitations (Phase 1)
+---
 
-- **Executing arbitrary mainnet programs.** The mirror loads program accounts *verbatim*
-  (so they are readable and present), but it does not yet extract and JIT-load their BPF
-  bytecode from the separate program-data account. That means *your own* deployed program
-  can read real mainnet state, but invoking a foreign program like Jupiter end-to-end
-  needs the fuller program-loading planned for Phase 2.
-- **`getProgramAccounts`** supports `dataSize` and `memcmp` filters but ignores
-  `dataSlice`, and reads only the stagenet's local account set (capped at 10k rows).
-- **WebSocket pub/sub** is poll-based; Yellowstone gRPC push is a Phase 2 upgrade.
+### rustag-sim: Semantic Diff & Invariant Policies
+
+**SemanticDiff** decodes raw account state changes into human-readable claims:
+
+| Variant | Decodes |
+|---|---|
+| `AccountCreated` | New account with owner and lamports |
+| `NonceAccountCreated` | New durable-nonce account (replay-attack primitive) |
+| `AccountClosed` | Account removed |
+| `OwnerChanged` | Owning program changed |
+| `UpgradeAuthority` | Program upgrade authority rotated |
+| `ProgramFrozen` | Upgrade authority set to None (irrevocable) |
+| `ProgramUpgraded` | ProgramData deployment slot changed (new bytecode) |
+| `TokenAmount` | SPL token account balance changed |
+| `TokenAuthorityChanged` | SPL token owner/close-authority changed |
+| `SolBalance` | Pure SOL balance move |
+| `DataChanged` | Data changed in a way not otherwise decoded |
+
+**Standard Policy** runs 6 invariant rules on every rehearsal:
+
+| Rule | What it catches |
+|---|---|
+| `upgrade-authority` | Any program upgrade authority rotation |
+| `owner-change` | Any account owner change |
+| `new-nonce-account` | Any new durable-nonce account creation |
+| `program-freeze` | Upgrade authority set to None (irreversible) |
+| `nonce-authority-combo` | Nonce creation + authority change in same payload (Drift attack pattern) |
+| `large-sol-drain` | >80% SOL drain from any single account |
+
+---
+
+### rustag-rpc: REST API
+
+Two forensics-specific endpoints:
+
+- `POST /api/rehearse` — accepts a base64 payload (or Squads proposal key),
+  runs a sealed rehearsal, returns signed `EvidenceBundle` + semantic diff +
+  alarms. Supports `policy_rules` for custom invariants.
+- `POST /api/verify` — accepts a bundle JSON, verifies the Ed25519 signature,
+  returns fidelity grade and state root metadata.
+
+---
+
+## What Makes This Different from Surfpool
+
+| Capability | Surfpool | RustAG |
+|---|---|---|
+| Primary use case | Local development | Pre-signing assurance |
+| Output | Running local network | Signed EvidenceBundle |
+| State model | Mutable (26 cheatcodes) | Pinned, content-addressed |
+| Multisig proposals | Not supported | Core workflow (`--proposal`) |
+| Semantic diff | No | Yes (11 variants) |
+| Invariant policies | No | Yes (6 standard rules) |
+| Cryptographic attestation | No | Ed25519 signed + SHA-256 |
+| Independent verification | No | Yes (re-executable) |
+| Forensics / counterfactual | No | Yes (`rustag forensics --patch`) |
+| Upgrade CI gate | No | Yes (GitHub Action) |
+| Real traffic corpus | No | Yes (`rustag record`) |
+
+---
+
+## Data Flow: Squads Proposal Rehearsal
+
+```
+rustag rehearse --proposal <SQUADS_PUBKEY> --rpc <MAINNET_RPC>
+                │
+                ▼
+SquadsDecoder.decode_proposal()
+  └─ RPC: getAccountInfo(<SQUADS_PUBKEY>)
+  └─ Borsh-decode VaultTransaction
+  └─ ProposedPayload { multisig, vault_index, threshold, message_bytes }
+                │
+                ▼
+TouchSetResolver.resolve(<VersionedMessage>)
+  └─ Static keys
+  └─ v0 ALT expansion
+  └─ ProgramData dereference
+  └─ Clock sysvar
+                │
+                ▼
+MultiRpcFetcher.fetch_with_provenance(<closure_keys>)
+  └─ fetch from N endpoints
+  └─ require M-of-N agreement
+  └─ InputProvenance per account
+                │
+                ▼
+SealedRehearsal::run()
+  └─ Pass 1: Discovery (dry-run)
+  └─ Pass 2: Execution (sealed)
+  └─ SemanticDiff::decode()
+  └─ Policy::standard().evaluate()
+  └─ Sign with Ed25519
+                │
+                ▼
+EvidenceBundle → groundtruth-bundle.json
+Closure       → groundtruth-closure.json
+
+# Signer verifies independently:
+rustag verify groundtruth-bundle.json --closure groundtruth-closure.json
+```
+
+---
+
+## The ForwardRecorder → Upgrade Gate Pipeline (Phase 3)
+
+```
+rustag record --program <PROGRAM_ID> --rpc <MAINNET_RPC> --out corpus.json
+                │
+                ▼  (getSignaturesForAddress + getTransaction)
+RecordedCorpus { transactions: Vec<RecordedTransaction> }
+                │
+                ▼
+GitHub Action: upgrade-rehearsal.yml
+  ├─ Replay corpus against current bytecode → baseline alarms
+  └─ rustag forensics --patch <candidate.so> → counterfactual result
+      └─ BLOCKED if tx fails / REPRODUCED if tx still succeeds
+      └─ Post diff report to PR
+      └─ Fail CI on new alarms
+```
+
+---
+
+## Fidelity Grades
+
+| Grade | Meaning | When |
+|---|---|---|
+| **A** | Deterministically re-executable | Closure is complete, two-pass succeeded |
+| **B** | Observed (not fully re-executable) | Clock-dependent or incomplete closure |
+
+A Grade A bundle can be re-verified by anyone with the payload and closure,
+independent of the original rehearser. A tampered proposer UI cannot produce a
+valid Grade A bundle for a different payload.

@@ -13,7 +13,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 #[command(
     name = "rustag",
     version,
-    about = "A persistent, mainnet-mirroring staging environment for Solana programs",
+    about = "Attested pre-execution assurance for Solana privileged operations",
     long_about = None,
 )]
 struct Cli {
@@ -63,14 +63,20 @@ enum Command {
     Metrics(commands::metrics::MetricsArgs),
     /// Run preflight diagnostics (DB writable, mainnet reachable, ports free).
     Doctor(commands::doctor::DoctorArgs),
+    /// Rehearse a privileged payload and emit a signed EvidenceBundle (GroundTruth).
+    Rehearse(commands::rehearse::RehearseArgs),
     /// Produce a signed, verifiable attestation of staged state (Phase 3).
     Attest(commands::attest::AttestArgs),
-    /// Verify a staging attestation offline (Phase 3).
+    /// Verify a staging attestation or EvidenceBundle offline.
     Verify(commands::verify::VerifyArgs),
     /// Scan recorded transactions for exploit signatures (Phase 3).
     Scan(commands::scan::ScanArgs),
     /// Build an off-chain concurrent Merkle tree and print its root (Phase 3).
     Tree(commands::tree::TreeArgs),
+    /// Re-execute a historical transaction for forensic incident analysis.
+    Forensics(commands::forensics::ForensicsArgs),
+    /// Record real mainnet transactions for a watched program (upgrade-rehearsal CI gate).
+    Record(commands::record::RecordArgs),
 }
 
 #[tokio::main]
@@ -93,10 +99,13 @@ async fn main() -> anyhow::Result<()> {
         Command::Schedule(args) => commands::schedule::run(args).await,
         Command::Metrics(args) => commands::metrics::run(args).await,
         Command::Doctor(args) => commands::doctor::run(args).await,
+        Command::Rehearse(args) => commands::rehearse::run(args).await,
         Command::Attest(args) => commands::attest::run(args).await,
         Command::Verify(args) => commands::verify::run(args).await,
         Command::Scan(args) => commands::scan::run(args).await,
         Command::Tree(args) => commands::tree::run(args).await,
+        Command::Forensics(args) => commands::forensics::run(args).await,
+        Command::Record(args) => commands::record::run(args).await,
     }
 }
 

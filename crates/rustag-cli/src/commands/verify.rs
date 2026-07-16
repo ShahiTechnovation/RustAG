@@ -1,18 +1,21 @@
-//! `rustag verify` - verify a staging attestation offline (Phase 3, P3.1).
+//! `rustag verify` - verify a staging attestation or EvidenceBundle offline.
 
 use std::path::PathBuf;
 
 use anyhow::{anyhow, bail, Context, Result};
+use base64::Engine;
 use clap::Args;
 use console::style;
 
-use rustag_attest::Attestation;
+use rustag_attest::{Attestation, EvidenceBundle};
+use rustag_rehearse::{from_portable, verify_bundle, PortableAccount};
+use solana_transaction::versioned::VersionedTransaction;
 
 use super::{fail, info, load_all_accounts, ok, open_store, resolve_record};
 
 #[derive(Args)]
 pub struct VerifyArgs {
-    /// Path to the attestation JSON to verify.
+    /// Path to the attestation or EvidenceBundle JSON to verify.
     pub file: PathBuf,
     /// Verify the state root against a stagenet's current accounts (defaults to
     /// the stagenet named in the attestation, if it exists locally).
@@ -21,11 +24,27 @@ pub struct VerifyArgs {
     /// Only check the signature; skip recomputing the state root.
     #[arg(long)]
     pub signature_only: bool,
+    /// EvidenceBundle: portable closure JSON to check `pre_state_root` against
+    /// (ideally re-fetched from your own RPC).
+    #[arg(long)]
+    pub closure: Option<PathBuf>,
+    /// EvidenceBundle: base64 payload to re-execute for full verification.
+    #[arg(long)]
+    pub message: Option<String>,
 }
 
 pub async fn run(args: VerifyArgs) -> Result<()> {
     let raw = std::fs::read_to_string(&args.file)
         .with_context(|| format!("failed to read {}", args.file.display()))?;
+
+    // An EvidenceBundle and an Attestation are distinct artifacts; dispatch on
+    // the evidence schema so `verify` handles both.
+    if let Ok(bundle) = EvidenceBundle::from_json(&raw) {
+        if bundle.manifest.schema.starts_with("groundtruth.evidence") {
+            return verify_evidence(&args, bundle).await;
+        }
+    }
+
     let attestation =
         Attestation::from_json(&raw).map_err(|e| anyhow!("not a valid attestation file: {e}"))?;
 
@@ -91,6 +110,86 @@ pub async fn run(args: VerifyArgs) -> Result<()> {
 
     info("no matching local stagenet found - verified signature only (state root NOT checked)");
     finish(signature_valid)
+}
+
+/// Verify a GroundTruth EvidenceBundle: signature, then (if a closure is given)
+/// the `pre_state_root`, then (if a payload is also given) full re-execution.
+async fn verify_evidence(args: &VerifyArgs, bundle: EvidenceBundle) -> Result<()> {
+    let m = &bundle.manifest;
+    println!();
+    info(format!("attester    {}", bundle.attester));
+    info(format!(
+        "grade       {:?}   engine {}",
+        m.fidelity_grade, m.engine
+    ));
+    info(format!("pre  root   {}", m.pre_state_root));
+    info(format!("post root   {}", m.post_state_root));
+    info(format!(
+        "programs    {}   compute {} CU",
+        m.program_ids.len(),
+        m.compute_units
+    ));
+
+    let signature_valid = bundle
+        .verify_signature()
+        .map_err(|e| anyhow!("signature check failed: {e}"))?;
+    print_check("signature", signature_valid);
+
+    if args.signature_only {
+        return finish_evidence(signature_valid);
+    }
+
+    // Without a closure we cannot check the state the bundle rehearsed against.
+    let Some(closure_path) = &args.closure else {
+        info("no --closure given - verified signature only (state NOT checked)");
+        return finish_evidence(signature_valid);
+    };
+
+    let closure_raw = std::fs::read_to_string(closure_path)
+        .with_context(|| format!("failed to read {}", closure_path.display()))?;
+    let portable: Vec<PortableAccount> =
+        serde_json::from_str(&closure_raw).context("closure file is not a portable-account array")?;
+    let closure = from_portable(&portable).map_err(|e| anyhow!("bad closure: {e}"))?;
+
+    let check = bundle.verify_pre_state(&closure);
+    print_check("pre-state matches", check.pre_state_matches);
+    print_check("account count matches", check.account_count_matches);
+    if !check.pre_state_matches {
+        info(format!("  expected {}", check.expected_pre_state_root));
+        info(format!("  actual   {}", check.actual_pre_state_root));
+    }
+
+    // With the payload too, re-execute for full verification.
+    if let Some(message) = &args.message {
+        let payload = decode_payload(message)?;
+        let full = verify_bundle(&bundle, &closure, &payload)
+            .await
+            .map_err(|e| anyhow!("re-execution failed: {e}"))?;
+        print_check("re-execution reproduces post root", full.post_state_matches);
+        if !full.post_state_matches {
+            info(format!("  recomputed {}", full.recomputed_post_state_root));
+        }
+        return finish_evidence(full.is_valid());
+    }
+
+    finish_evidence(check.is_valid())
+}
+
+fn decode_payload(base64_tx: &str) -> Result<VersionedTransaction> {
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(base64_tx.trim())
+        .context("--message is not valid base64")?;
+    bincode::deserialize(&bytes).context("--message is not a bincode VersionedTransaction")
+}
+
+fn finish_evidence(valid: bool) -> Result<()> {
+    println!();
+    if valid {
+        ok("EvidenceBundle is VALID");
+        Ok(())
+    } else {
+        bail!("EvidenceBundle is INVALID");
+    }
 }
 
 fn print_check(label: &str, passed: bool) {

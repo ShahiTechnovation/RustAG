@@ -34,6 +34,7 @@
 mod attestation;
 mod audit;
 mod error;
+mod evidence;
 mod manifest;
 mod merkle;
 mod state;
@@ -41,6 +42,10 @@ mod state;
 pub use attestation::{Attestation, VerificationReport};
 pub use audit::{AuditEntry, AuditLog};
 pub use error::{AttestError, Result};
+pub use evidence::{
+    payload_hash, EvidenceBundle, EvidenceCheck, EvidenceManifest, FidelityGrade, InputProvenance,
+    EVIDENCE_SCHEMA,
+};
 pub use manifest::{AttestationManifest, MANIFEST_SCHEMA};
 pub use merkle::{
     decode_hash, hash_leaf, hash_nodes, verify_proof, Hash32, MerkleProof, MerkleTree, EMPTY_ROOT,

@@ -30,6 +30,9 @@ pub fn router(state: AppState) -> Router {
         .route("/api/airdrop", post(airdrop))
         .route("/api/override", post(override_account))
         .route("/api/preload", post(preload))
+        // --- GroundTruth: pre-execution rehearsal ---
+        .route("/api/rehearse", post(rehearse))
+        .route("/api/verify", post(verify_evidence))
         // --- Phase 2: scheduler, analytics, simulation ---
         .route("/api/schedules", get(list_schedules).post(create_schedule))
         .route("/api/schedules/{id}", delete(delete_schedule))
@@ -467,3 +470,124 @@ fn decode_tx(
     };
     bincode::deserialize::<VersionedTransaction>(&bytes).map_err(|e| format!("deserialize: {e}"))
 }
+
+// --- GroundTruth: Pre-Execution Rehearsal -----------------------------------
+
+#[derive(Deserialize)]
+struct RehearseBody {
+    /// Base64-encoded `VersionedTransaction` to rehearse.
+    payload: Option<String>,
+    /// Squads v4 proposal pubkey (alternative to `payload` — will be fetched
+    /// and decoded from mainnet).
+    proposal: Option<String>,
+    /// Custom invariant policy rules (optional — standard policy is used by default).
+    #[serde(default)]
+    policy_rules: Vec<PolicyRuleConfig>,
+}
+
+/// A user-supplied policy rule.
+#[derive(Deserialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+enum PolicyRuleConfig {
+    BalanceFloor { account: String, min_lamports: u64 },
+    ConfigFreeze { account: String, start: usize, end: usize },
+    LargeSolDrain { max_percent: f64 },
+}
+
+async fn rehearse(State(state): State<AppState>, Json(body): Json<RehearseBody>) -> ApiResult {
+    use solana_keypair::Keypair;
+
+    // Decode the payload from base64 or from a Squads proposal.
+    let payload: VersionedTransaction = if let Some(b64) = &body.payload {
+        decode_tx(b64, Some("base64")).map_err(|m| (StatusCode::BAD_REQUEST, m))?
+    } else if let Some(_proposal) = &body.proposal {
+        // Squads proposal decoding requires a mainnet fetch — for now, return
+        // a clear error directing users to the CLI for proposal rehearsals.
+        return Err((
+            StatusCode::NOT_IMPLEMENTED,
+            "Squads proposal decoding via REST is coming in Phase 2. Use `rustag rehearse --proposal` CLI for now.".to_string(),
+        ));
+    } else {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "either `payload` (base64 tx) or `proposal` (Squads pubkey) is required".to_string(),
+        ));
+    };
+
+    // Build the invariant policy.
+    let mut policy = rustag_sim::Policy::standard();
+    for rule in &body.policy_rules {
+        match rule {
+            PolicyRuleConfig::BalanceFloor { account, min_lamports } => {
+                let pk = Pubkey::from_str(account)
+                    .map_err(|_| (StatusCode::BAD_REQUEST, format!("invalid pubkey: {account}")))?;
+                policy = policy.rule("custom-balance-floor", rustag_sim::balance_floor(pk, *min_lamports));
+            }
+            PolicyRuleConfig::ConfigFreeze { account, start, end } => {
+                let pk = Pubkey::from_str(account)
+                    .map_err(|_| (StatusCode::BAD_REQUEST, format!("invalid pubkey: {account}")))?;
+                policy = policy.rule("custom-config-freeze", rustag_sim::config_bytes_immutable(pk, *start..*end));
+            }
+            PolicyRuleConfig::LargeSolDrain { max_percent } => {
+                policy = policy.rule("custom-large-sol-drain", rustag_sim::large_sol_drain(*max_percent));
+            }
+        }
+    }
+
+    // Create a temporary offline stagenet for the rehearsal.
+    let working = {
+        let sn = state.stagenet.read().await;
+        sn.fork("rehearsal-api").await.map_err(server_err)?
+    };
+
+    let signer = Keypair::new();
+    let opts = rustag_rehearse::RehearsalOptions::offline();
+
+    let rehearsal = rustag_rehearse::SealedRehearsal::run(
+        working, payload, opts, &policy, &signer,
+    )
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let bundle_json = serde_json::to_value(&rehearsal.bundle).map_err(server_err)?;
+    let alarms_json = serde_json::to_value(&rehearsal.alarms).map_err(server_err)?;
+    let diff_json = serde_json::to_value(&rehearsal.semantic_diff).map_err(server_err)?;
+
+    Ok(Json(json!({
+        "bundle": bundle_json,
+        "grade": if rehearsal.grade_a { "A" } else { "B" },
+        "alarmCount": rehearsal.alarm_count(),
+        "alarms": alarms_json,
+        "semanticDiff": diff_json,
+        "closureAccountCount": rehearsal.closure.len(),
+    })))
+}
+
+#[derive(Deserialize)]
+struct VerifyBody {
+    /// The EvidenceBundle JSON to verify.
+    bundle: serde_json::Value,
+}
+
+async fn verify_evidence(Json(body): Json<VerifyBody>) -> ApiResult {
+    // Parse the bundle from the JSON value.
+    let bundle: rustag_attest::EvidenceBundle = serde_json::from_value(body.bundle)
+        .map_err(|e| (StatusCode::BAD_REQUEST, format!("invalid bundle: {e}")))?;
+
+    // Verify the signature.
+    let sig_valid = bundle
+        .verify_signature()
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("signature verification failed: {e}")))?;
+
+    Ok(Json(json!({
+        "signatureValid": sig_valid,
+        "fidelityGrade": format!("{:?}", bundle.manifest.fidelity_grade),
+        "preStateRoot": bundle.manifest.pre_state_root,
+        "postStateRoot": bundle.manifest.post_state_root,
+        "success": bundle.manifest.success,
+        "computeUnits": bundle.manifest.compute_units,
+        "closureAccountCount": bundle.manifest.closure_account_count,
+        "createdAt": bundle.manifest.created_at.to_rfc3339(),
+    })))
+}
+

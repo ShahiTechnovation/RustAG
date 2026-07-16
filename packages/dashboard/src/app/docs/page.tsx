@@ -27,14 +27,14 @@ import {
 export const metadata: Metadata = {
   title: "Introduction",
   description:
-    "RustAG is a persistent, mainnet-mirroring staging environment for Solana programs — the SVM analogue of Tenderly Virtual TestNets. Test against real Pyth, Raydium, and token state with $0 SOL.",
+    "RustAG is the GroundTruth layer for Solana — attested pre-execution assurance for privileged operations. Rehearse Squads proposals, get signed EvidenceBundles, run counterfactual forensics.",
 };
 
 const HERO_STATS = [
-  { value: "$0", label: "Cost to test" },
-  { value: "∞", label: "Airdrops" },
-  { value: "21", label: "JSON-RPC methods" },
-  { value: "<2s", label: "Oracle staleness" },
+  { value: "$0", label: "Cost to rehearse" },
+  { value: "Grade A", label: "Fidelity" },
+  { value: "11", label: "Semantic change types" },
+  { value: "6", label: "Invariant rules" },
 ];
 
 const CATEGORIES = [
@@ -42,42 +42,42 @@ const CATEGORIES = [
     href: "/docs/quickstart",
     icon: <Rocket size={18} />,
     title: "Quickstart",
-    desc: "From a built binary to a running mainnet-mirroring stagenet in about two minutes.",
+    desc: "From install to a signed EvidenceBundle in about two minutes using the built-in demo.",
     meta: "Get started",
   },
   {
     href: "/docs/concepts",
     icon: <Boxes size={18} />,
     title: "Core concepts",
-    desc: "The lazy account mirror and the Clean → Dirty → Pinned state machine the whole product is built on.",
+    desc: "The sealed two-pass rehearsal, the EvidenceBundle format, Grade A/B fidelity, and the account closure model.",
     meta: "Concept",
   },
   {
     href: "/docs/cli",
     icon: <SquareTerminal size={18} />,
     title: "CLI reference",
-    desc: "Every rustag subcommand with exact flags — create, start, airdrop, override, schedule, attest.",
+    desc: "Every rustag subcommand — rehearse, forensics, record, verify, attest, and the full app management surface.",
     meta: "Reference",
   },
   {
     href: "/docs/sdk",
     icon: <Code2 size={18} />,
     title: "SDK & API",
-    desc: "@rustag/sdk, the REST contract, and the Solana JSON-RPC + WebSocket surface your tooling speaks.",
+    desc: "@rustag/sdk, POST /api/rehearse, POST /api/verify, and the Solana JSON-RPC surface.",
     meta: "Reference",
   },
   {
     href: "/docs/architecture",
     icon: <Plug size={18} />,
     title: "Architecture",
-    desc: "The four-layer request flow, the crate map, and the Phase 2 / Phase 3 feature set.",
+    desc: "Dual-layer design: Ingest (TouchSet, Squads, MultiRpc) + Sealed Rehearsal (LiteSVM, semantic diff, invariant policy).",
     meta: "Advanced",
   },
   {
     href: "/docs/security",
     icon: <ShieldCheck size={18} />,
     title: "Trust & security",
-    desc: "Threat model, verifiable attestation, service levels, and an honest list of early-access limits.",
+    desc: "Threat model, Ed25519 attestation, N-of-M provenance, and an honest list of early-access limits.",
     meta: "Trust",
   },
 ];
@@ -89,15 +89,19 @@ const STATES = [
   { state: "Pinned" as const, desc: "Set via override. Locked to exactly the value you chose." },
 ];
 
-const QUICKSTART = `# 1. Point the mirror at a mainnet RPC (a free Helius key is recommended)
+const QUICKSTART = `# 1. Point at a mainnet RPC (Helius free key recommended)
 export RUSTAG_MAINNET_RPC="https://mainnet.helius-rpc.com/?api-key=YOUR_KEY"
 
-# 2. Create and start a persistent, mainnet-mirroring stagenet
-rustag create demo
-rustag start demo --preload pyth raydium
+# 2. Rehearse a Squads proposal (built-in demo works without a key)
+rustag rehearse --demo
 
-# 3. Point any Solana client at it — one line changes
-ANCHOR_PROVIDER_URL=http://127.0.0.1:8899 anchor test`;
+# 3. Rehearse a real proposal from mainnet
+rustag rehearse \\
+  --proposal 7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU \\
+  --rpc $RUSTAG_MAINNET_RPC
+
+# 4. Verify the bundle offline (zero network needed)
+rustag verify groundtruth-bundle.json --closure groundtruth-closure.json`;
 
 export default function DocsHome() {
   return (
@@ -112,13 +116,16 @@ export default function DocsHome() {
           <div>
             <Eyebrow className="text-brand">Documentation · Early Access</Eyebrow>
             <h1 className="mt-5 text-balance font-display text-4xl font-bold leading-[1.02] tracking-tight text-fg sm:text-5xl lg:text-6xl">
-              A staging Solana that <em className="font-serif font-normal italic text-brand">mirrors</em>{" "}
-              mainnet.
+              Know what a transaction{" "}
+              <em className="font-serif font-normal italic text-brand">does</em>
+              {" "}before you sign it.
             </h1>
             <p className="mt-6 max-w-xl text-pretty text-lg leading-relaxed text-muted">
-              RustAG wraps LiteSVM with a lazy mainnet account mirror, so your tests run against{" "}
-              <span className="text-fg">real Pyth prices, real Raydium pools, and real token mints</span> —
-              with unlimited free airdrops and zero SOL spent.
+              RustAG rehearses any Solana transaction against faithful mainnet state in a sealed sandbox
+              — then emits a{" "}
+              <span className="text-fg">cryptographically signed EvidenceBundle</span>{" "}
+              with a semantic diff, invariant alarms, and compute used. Verify it offline,
+              before a single multisig signer approves.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">

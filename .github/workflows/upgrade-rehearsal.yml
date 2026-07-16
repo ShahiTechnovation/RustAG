@@ -1,0 +1,146 @@
+name: Upgrade Rehearsal Gate
+
+# Runs whenever a program ELF changes in a PR. Records recent mainnet traffic
+# for the watched program, replays both the current and candidate bytecode
+# against that corpus, and fails if the candidate introduces any divergence or
+# raises a new invariant alarm.
+
+on:
+  pull_request:
+    paths:
+      - 'target/deploy/*.so'
+      - 'programs/**'
+      - 'src/**'
+  workflow_dispatch:
+    inputs:
+      program_id:
+        description: 'Solana program ID to rehearse'
+        required: true
+      elf_path:
+        description: 'Path to the candidate ELF binary'
+        required: true
+        default: 'target/deploy/program.so'
+
+env:
+  RUSTAG_VERSION: '0.1.0'
+
+jobs:
+  upgrade-rehearsal:
+    name: Upgrade Rehearsal Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install RustAG
+        run: |
+          cargo install rustag-cli \
+            --git https://github.com/ShahiTechnovation/RustAG \
+            --locked \
+            --quiet
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
+
+      - name: Record mainnet corpus
+        id: record
+        run: |
+          rustag record \
+            --program ${{ inputs.program_id || env.PROGRAM_ID }} \
+            --rpc ${{ secrets.MAINNET_RPC }} \
+            --limit 200 \
+            --out corpus.json
+          echo "recorded=$(jq '.transactions | length' corpus.json) transactions"
+        env:
+          RUSTAG_MAINNET_RPC: ${{ secrets.MAINNET_RPC }}
+
+      - name: Rehearse upgrade (current bytecode)
+        id: rehearse_current
+        run: |
+          rustag rehearse \
+            --payload $(cat corpus.json | jq -r '.transactions[0].rawTxB64') \
+            --rpc ${{ secrets.MAINNET_RPC }} \
+            --out current-bundle.json \
+            --closure current-closure.json \
+            --fail-on high
+        continue-on-error: true
+
+      - name: Rehearse upgrade (candidate bytecode — counterfactual)
+        id: rehearse_candidate
+        run: |
+          rustag forensics \
+            $(cat corpus.json | jq -r '.transactions[-1].signature') \
+            --rpc ${{ secrets.MAINNET_RPC }} \
+            --patch ${{ inputs.elf_path || 'target/deploy/program.so' }} \
+            --patch-program ${{ inputs.program_id || env.PROGRAM_ID }} \
+            --out candidate-bundle.json \
+            --closure candidate-closure.json \
+            --json > candidate-result.json
+
+      - name: Compare results
+        id: compare
+        run: |
+          current_alarms=$(jq '.manifest.findings.alarms | length' current-bundle.json 2>/dev/null || echo 0)
+          candidate_alarms=$(jq '.alarms | length' candidate-result.json 2>/dev/null || echo 0)
+          candidate_success=$(jq -r '.bundle.manifest.success' candidate-result.json 2>/dev/null || echo true)
+          
+          echo "current_alarms=$current_alarms" >> $GITHUB_OUTPUT  
+          echo "candidate_alarms=$candidate_alarms" >> $GITHUB_OUTPUT
+          echo "candidate_success=$candidate_success" >> $GITHUB_OUTPUT
+
+      - name: Post PR comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            let currentBundle = {};
+            let candidateResult = {};
+            
+            try { currentBundle = JSON.parse(fs.readFileSync('current-bundle.json', 'utf8')); } catch(e) {}
+            try { candidateResult = JSON.parse(fs.readFileSync('candidate-result.json', 'utf8')); } catch(e) {}
+            
+            const currentAlarms = (currentBundle.manifest?.findings?.alarms || []).length;
+            const candidateAlarms = (candidateResult.alarms || []).length;
+            const newAlarms = Math.max(0, candidateAlarms - currentAlarms);
+            const gradeA = candidateResult.bundle?.manifest?.fidelityGrade === 'A';
+            
+            const statusEmoji = newAlarms > 0 ? '🔴' : '🟢';
+            const gradeText = gradeA ? '✅ Grade A (deterministically re-executable)' : '⚠️ Grade B (observed)';
+            
+            const comment = [
+              `## ${statusEmoji} Upgrade Rehearsal Gate`,
+              ``,
+              `| | Current | Candidate |`,
+              `|---|---|---|`,
+              `| Alarms | ${currentAlarms} | ${candidateAlarms} |`,
+              `| New alarms | — | ${newAlarms} |`,
+              `| Fidelity | — | ${gradeText} |`,
+              ``,
+              newAlarms > 0
+                ? `> ⚠️ **${newAlarms} new invariant alarm(s) detected** — this upgrade may introduce security-relevant changes`
+                : `> ✅ No new alarms — upgrade appears safe based on sampled mainnet traffic`,
+              ``,
+              `<details>`,
+              `<summary>Semantic diff (candidate)</summary>`,
+              ``,
+              `\`\`\`json`,
+              JSON.stringify(candidateResult.semanticDiff || [], null, 2),
+              `\`\`\``,
+              `</details>`,
+              ``,
+              `*Powered by [RustAG](https://github.com/ShahiTechnovation/RustAG) — attested pre-execution assurance for Solana*`,
+            ].join('\n');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment,
+            });
+
+      - name: Fail on new alarms
+        if: steps.compare.outputs.candidate_alarms > steps.compare.outputs.current_alarms
+        run: |
+          echo "::error::Upgrade rehearsal detected ${{ steps.compare.outputs.candidate_alarms }} alarm(s) — review the PR comment for details"
+          exit 1

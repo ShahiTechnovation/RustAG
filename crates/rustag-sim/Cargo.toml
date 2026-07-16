@@ -29,3 +29,4 @@ solana-message.workspace = true
 solana-system-interface.workspace = true
 solana-hash.workspace = true
 solana-signature.workspace = true
+uuid.workspace = true

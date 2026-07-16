@@ -30,8 +30,10 @@ mod diff;
 mod error;
 mod exploit;
 mod fuzz;
+mod invariants;
 mod report;
 mod scenario;
+mod semantic;
 
 pub use bundle::{
     default_tip_accounts, land_bundle, simulate_bundle, simulate_bundle_with_tips, BundleReport,
@@ -41,8 +43,13 @@ pub use diff::{differential, Divergence, DivergenceReport};
 pub use error::{Result, SimError};
 pub use exploit::{scan_outcomes, Finding, ScanReport, Severity};
 pub use fuzz::{
-    balance_floor, fuzz, owner_unchanged, FuzzObservation, FuzzReport, FuzzRng, Invariant,
-    Violation,
+    fuzz, FuzzObservation, FuzzReport, FuzzRng, Invariant, Violation,
+};
+pub use invariants::{
+    any_owner_change, any_upgrade_authority_rotation, balance_floor, config_bytes_immutable,
+    large_sol_drain, no_new_nonce_account, nonce_authority_combo, owner_unchanged,
+    program_freeze_guard, Alarm, Policy, PolicyRule, PrePost,
 };
 pub use report::{ComparisonReport, ScenarioReport, TxResult};
 pub use scenario::{compare, fork_and_replay, replay, stress};
+pub use semantic::{decode_changes, SemanticChange};

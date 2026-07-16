@@ -16,6 +16,7 @@ mod account_state;
 mod account_store;
 mod config;
 mod error;
+pub mod fidelity;
 pub mod metrics;
 mod realtime;
 mod stagenet;

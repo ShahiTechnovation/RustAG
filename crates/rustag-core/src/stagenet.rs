@@ -8,6 +8,7 @@ use dashmap::DashSet;
 use litesvm::LiteSVM;
 use moka::future::Cache;
 use solana_account::Account;
+use solana_clock::Clock;
 use solana_address_lookup_table_interface::state::AddressLookupTable;
 use solana_hash::Hash;
 use solana_message::VersionedMessage;
@@ -654,6 +655,67 @@ impl Stagenet {
         // so all account/program state is preserved across the swap.
         let svm = std::mem::take(&mut self.svm);
         self.svm = svm.with_sigverify(enabled);
+    }
+
+    // --- fidelity (pre-execution rehearsal) -----------------------------
+
+    /// Follow an upgradeable program's `ProgramData` pointer, load the real
+    /// mainnet bytecode into the runtime so the program actually executes, and
+    /// keep the true `Program`/`ProgramData` account bytes (so a rehearsal can
+    /// see the real upgrade authority). Returns `true` if `program_id` was an
+    /// upgradeable-loader program that was wired up.
+    ///
+    /// This closes the "real mainnet programs don't run" gap: the executable ELF
+    /// lives in a *separate* account referenced by the program account, and the
+    /// upgrade authority - the field a malicious upgrade rotates - lives there
+    /// too. See [`crate::fidelity`] for the layout.
+    pub async fn load_upgradeable_program(&mut self, program_id: &Pubkey) -> Result<bool> {
+        let Some(program) = self.get_account(program_id).await? else {
+            return Ok(false);
+        };
+        if !crate::fidelity::is_upgradeable_program(&program.owner) {
+            return Ok(false);
+        }
+        let Some(pd_addr) = crate::fidelity::parse_programdata_address(&program.data) else {
+            return Ok(false);
+        };
+        let Some(programdata) = self.get_account(&pd_addr).await? else {
+            return Ok(false);
+        };
+
+        // Register the executable so LiteSVM's program cache can run it. The
+        // cache is keyed by program id and holds the compiled program, so
+        // re-setting the account bytes afterward does not un-register it.
+        let elf = crate::fidelity::programdata_elf(&programdata.data);
+        if !elf.is_empty() {
+            if let Err(e) = self.svm.add_program(*program_id, elf) {
+                tracing::warn!(program = %program_id, error = ?e, "add_program failed; state loaded but execution may not");
+            }
+        }
+
+        // Restore the true mainnet account bytes so state diffs and the
+        // upgrade-authority invariant read the real values, not synthetic ones
+        // `add_program` may have written.
+        self.svm
+            .set_account_no_checks(program.pubkey, program.to_shared_data());
+        self.svm
+            .set_account_no_checks(programdata.pubkey, programdata.to_shared_data());
+        Ok(true)
+    }
+
+    /// Pin the `Clock` sysvar at `slot` / `unix_timestamp` so time-dependent
+    /// program logic (vesting, funding windows, staleness checks, auctions)
+    /// rehearses against the intended moment rather than a stale genesis clock.
+    pub fn sync_clock(&mut self, slot: u64, unix_timestamp: i64) {
+        let mut clock: Clock = self.svm.get_sysvar();
+        clock.slot = slot;
+        clock.unix_timestamp = unix_timestamp;
+        self.svm.set_sysvar(&clock);
+    }
+
+    /// The current `Clock` sysvar (slot + unix timestamp), for inspection.
+    pub fn clock(&self) -> Clock {
+        self.svm.get_sysvar()
     }
 
     // --- preload + sync -------------------------------------------------

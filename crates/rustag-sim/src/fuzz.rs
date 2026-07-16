@@ -208,29 +208,6 @@ where
     })
 }
 
-/// Built-in invariant: the account at `pubkey` must keep `expected_owner`.
-pub fn owner_unchanged(pubkey: Pubkey, expected_owner: Pubkey) -> Invariant {
-    Box::new(move |obs| match obs.account(&pubkey) {
-        Some(entry) if entry.owner != expected_owner => Err(format!(
-            "account {pubkey} owner changed to {} (expected {expected_owner})",
-            entry.owner
-        )),
-        _ => Ok(()),
-    })
-}
-
-/// Built-in invariant: the account at `pubkey` must hold at least `floor`
-/// lamports (once it exists).
-pub fn balance_floor(pubkey: Pubkey, floor: u64) -> Invariant {
-    Box::new(move |obs| match obs.account(&pubkey) {
-        Some(entry) if entry.lamports < floor => Err(format!(
-            "account {pubkey} balance {} fell below floor {floor}",
-            entry.lamports
-        )),
-        _ => Ok(()),
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -239,6 +216,19 @@ mod tests {
     use solana_signer::Signer;
     use solana_system_interface::instruction::transfer;
     use solana_transaction::Transaction;
+
+    /// Test-only fuzz invariant: `pubkey` must hold at least `floor` lamports.
+    /// (Pre/post policy checks now live in [`crate::invariants`]; this is the
+    /// fuzz-loop shape used by the tests below.)
+    fn balance_floor(pubkey: Pubkey, floor: u64) -> Invariant {
+        Box::new(move |obs| match obs.account(&pubkey) {
+            Some(entry) if entry.lamports < floor => Err(format!(
+                "account {pubkey} balance {} fell below floor {floor}",
+                entry.lamports
+            )),
+            _ => Ok(()),
+        })
+    }
 
     #[test]
     fn rng_is_deterministic() {

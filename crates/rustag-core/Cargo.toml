@@ -23,6 +23,7 @@ solana-message.workspace = true
 solana-transaction.workspace = true
 solana-signature.workspace = true
 solana-address-lookup-table-interface.workspace = true
+solana-clock.workspace = true
 
 rustag-mirror.workspace = true
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, ShieldCheck } from "lucide-react";
 
 import { AnimatedNumber, ButtonLink, Eyebrow, GridBackground, RingField } from "@/components/ui";
 import { useStagenet } from "@/lib/hooks";
@@ -13,12 +13,11 @@ const ease = [0.22, 1, 0.36, 1] as const;
 export function Hero() {
   const { data, isError } = useStagenet();
   const live = !!data && !isError;
-  // Two honest constants + two live figures pulled from the demo backend.
   const stats: { value: React.ReactNode; label: string }[] = [
     { value: "0", label: "SOL spent" },
-    { value: "∞", label: "Airdrops" },
+    { value: "Grade A", label: "Fidelity" },
     { value: live ? <AnimatedNumber value={data.accounts} /> : "—", label: "Accounts mirrored" },
-    { value: live ? <AnimatedNumber value={data.slot} /> : "—", label: "Slot" },
+    { value: live ? <AnimatedNumber value={data.slot} /> : "—", label: "Live slot" },
   ];
 
   return (
@@ -34,7 +33,8 @@ export function Hero() {
           transition={{ duration: 0.6, ease }}
         >
           <Eyebrow className="justify-center text-brand">
-            Solana Mainnet · Mirrored On Demand
+            <ShieldCheck size={13} className="mr-1" />
+            GroundTruth · Pre-Execution Assurance for Solana
           </Eyebrow>
         </motion.div>
 
@@ -44,8 +44,9 @@ export function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease, delay: 0.05 }}
         >
-          A staging Solana that mirrors{" "}
-          <em className="font-serif italic font-normal text-brand">mainnet</em>.
+          Know what a transaction{" "}
+          <em className="font-serif italic font-normal text-brand">does</em>{" "}
+          before you sign it.
         </motion.h1>
 
         <motion.p
@@ -54,9 +55,11 @@ export function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease, delay: 0.12 }}
         >
-          RustAG lazily mirrors real mainnet accounts into a persistent stagenet — test against live
-          Pyth prices and Raydium pools with unlimited free airdrops and{" "}
-          <span className="text-fg">zero SOL spent</span>.
+          RustAG rehearses any Solana transaction against faithful mainnet state in a sealed sandbox
+          — then emits a{" "}
+          <span className="text-fg">cryptographically signed EvidenceBundle</span>{" "}
+          with a semantic diff, invariant alarms, and compute used. Verify it offline, before a single
+          multisig signer approves.
         </motion.p>
 
         <motion.div
@@ -101,7 +104,7 @@ export function Hero() {
         <div className="w-full max-w-md border border-border bg-surface/40 p-3">
           <div className="label mb-3 flex items-center justify-between px-1">
             <span className="text-brand">Live Mirror</span>
-            <span className="text-faint">Product Proof</span>
+            <span className="text-faint">Faithful mainnet state</span>
           </div>
           <MirrorVisual />
         </div>

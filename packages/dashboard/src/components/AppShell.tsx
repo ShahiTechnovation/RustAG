@@ -10,11 +10,13 @@ import {
   AlertTriangle,
   CalendarClock,
   Database,
+  FileSearch,
   FlaskConical,
   LayoutDashboard,
   LineChart,
   Menu,
   Radio,
+  ShieldCheck,
   X,
 } from "lucide-react";
 
@@ -25,6 +27,8 @@ import { Logo } from "./Logo";
 
 const NAV = [
   { href: "/app", label: "Overview", icon: LayoutDashboard },
+  { href: "/app/rehearse", label: "Rehearse", icon: ShieldCheck },
+  { href: "/app/forensics", label: "Forensics", icon: FileSearch },
   { href: "/app/accounts", label: "Accounts", icon: Database },
   { href: "/app/transactions", label: "Transactions", icon: Activity },
   { href: "/app/analytics", label: "Analytics", icon: LineChart },
@@ -110,7 +114,7 @@ function LiveStatus() {
             )}
           />
         </span>
-        {isError ? "Offline" : isLoading ? "Connecting" : live ? "Mirror live" : "Mirror off"}
+        {isError ? "Offline" : isLoading ? "Connecting" : live ? "Assurance live" : "Connecting"}
       </span>
     </div>
   );
@@ -167,7 +171,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="mt-auto rounded-[3px] border border-border bg-white/[0.02] p-3">
           <div className="flex items-center gap-2 text-xs text-faint">
             <Radio size={13} className="text-brand" />
-            Real mainnet state, on demand.
+            Pre-execution assurance. Verify before signing.
           </div>
           <Link
             href="/"

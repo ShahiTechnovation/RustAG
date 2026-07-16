@@ -1,120 +1,225 @@
 # RustAG
 
-**A persistent, mainnet-mirroring staging environment for Solana programs.**
+**Attested pre-execution assurance for Solana privileged operations.**
 
-> **▶ Try it live:** a public demo is running at **https://rustag-demo.onrender.com** —
-> e.g. [`/api/stagenet`](https://rustag-demo.onrender.com/api/stagenet) returns real
-> mainnet-mirrored state (Pyth, token programs, live slot). The Next.js dashboard drives
-> it visually. The demo runs in a **capped-interactive** mode: reads, capped airdrops, and
-> `simulate` are live; `override`/`preload`/schedule writes are disabled. (Free-tier
-> hosting — the first request after idle may cold-start for ~50s.)
-
-RustAG is the Solana equivalent of what Tenderly Virtual TestNets are for EVM - but
-built natively for the SVM account model. It wraps [LiteSVM](https://github.com/LiteSVM/litesvm)
-with a **lazy mainnet account mirror**, so your tests run against *real* Pyth prices,
-*real* Raydium pools, and *real* token mints - without spending a single lamport of
-mainnet SOL.
-
-```
-Solana testnet faucet:        ~5 SOL/day max
-DeFi integration test suite:  20–50 SOL/day needed
-With RustAG:                  unlimited airdrops, real mainnet state, $0
-```
+> Rehearse any privileged Solana transaction — a Squads multisig proposal, a program
+> upgrade, a treasury move — against faithful mainnet state in a sealed, deterministic
+> sandbox, and get a signed diff every signer can independently re-verify **offline**.
+> The execution preview that survives a compromised UI.
 
 ---
 
-## The core idea: lazy account mirror
+## The Problem
 
-When a transaction reads account `X`:
+```
+Drift   — $285M (April 2026). Audited, uncompromised contracts. Attackers used
+           durable nonces + social engineering to get multisig members to blind-sign
+           transactions carrying hidden authority rotations.
+Loopscale — $5.8M. A program upgrade skipped a single program-ID validation,
+           shipping a pricing regression no pre-deploy gate caught.
+```
 
-1. **Local hit?** Return the stagenet's copy.
-2. **Miss?** Fetch it from mainnet → cache it → mark it `Clean` → return it.
-3. **A transaction writes `X`?** Mark it `Dirty` - it is now frozen from mainnet sync forever.
+Today, every Squads multisig signer sees **SOL/token balance diffs at best** — or hand-decodes little-endian hex per SEAL's official guidance. There is **no** deterministic, re-runnable, signed pre-execution proof of what a privileged Solana transaction will do.
 
-A background task re-fetches `Clean` **oracle** accounts every 30s, so Pyth
-prices stay fresh. `Dirty` and `Pinned` accounts are never overwritten. This is how
-"mainnet replay" works on the SVM, where (unlike EVM) there is no block to fork from.
+On EVM, Tenderly + Safe make this a funded category. On SVM, it's defended by a CLI.
+
+**RustAG fills this gap.**
 
 ---
 
-## Quick start
+## How It Works
+
+RustAG wraps [LiteSVM](https://github.com/LiteSVM/litesvm) with a **lazy mainnet
+account mirror** and a **sealed two-pass rehearsal** algorithm:
+
+```
+Input: a proposed payload (Squads proposal pubkey | raw base64 message | upgrade build)
+  │
+  ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│ (1) Ingest & Resolve                                                │
+│   • TouchSetResolver: static keys + v0 ALT + ProgramData PDAs      │
+│   • MultiRpcFetcher: N-of-M cross-fetch with InputProvenance        │
+│   • SquadsDecoder: fetch and decode Squads v4 proposal payloads     │
+└──────────────────────────────────────────────────────────────────────┘
+  │
+  ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│ (2) Fidelity Layer                                                   │
+│   • ProgramData dereference: follow BPFLoaderUpgradeable → ELF      │
+│   • Clock sync: pin Clock sysvar at target slot/blockTime            │
+└──────────────────────────────────────────────────────────────────────┘
+  │
+  ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│ (3) Sealed Rehearsal (two-pass, Grade A)                             │
+│   Pass 1 (discovery): simulate → fault in the full account closure   │
+│   Pass 2 (execute): Checkpoint(pre) → restore offline → execute →   │
+│     Journal(post) → replay_matches_journal == Grade A                │
+│   • diff_accounts(pre, post) → StateDiff                             │
+│   • SemanticDiff: human-readable claims per changed account          │
+│   • Invariant policy evaluation → alarms                             │
+│   • Exploit scan: CPI tree / reentrancy / compute analysis           │
+└──────────────────────────────────────────────────────────────────────┘
+  │
+  ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│ (4) Evidence Engine                                                   │
+│   • EvidenceBundle v2: payload_hash + pre/post_state_root + findings │
+│   • Ed25519 signature + domain-tagged signing digest                 │
+│   • Offline-verifiable: any signer re-executes on their own machine  │
+└──────────────────────────────────────────────────────────────────────┘
+  │
+  ├───────────────┬─────────────────┬───────────────────┐
+  ▼               ▼                 ▼                   ▼
+CLI (rehearse)  REST API       CI gate (GH Action)  Signer UI
+```
+
+### The Fidelity Grade
+
+Every bundle carries an explicit **fidelity grade** — we never overclaim:
+
+- **Grade A** — deterministically re-executable: a self-contained offline checkpoint +
+  journal that any verifier reproduces exactly on their own machine.
+- **Grade B** — a signed *observation* of an external engine that is not
+  offline-self-contained.
+
+---
+
+## Quick Start
 
 ```bash
 # 1. Build the CLI
 cargo build --release            # produces target/release/rustag
 
-# 2. Point the mirror at a mainnet RPC (a free Helius key is recommended)
-export RUSTAG_MAINNET_RPC="https://mainnet.helius-rpc.com/?api-key=YOUR_KEY"
+# 2. Rehearse a Squads multisig proposal
+rustag rehearse \
+  --proposal <SQUADS_PROPOSAL_PUBKEY> \
+  --rpc https://mainnet.helius-rpc.com/?api-key=YOUR_KEY \
+  --signer ./groundtruth-key.json
 
-# 3. Create and start a stagenet
-rustag create demo
-rustag start demo --preload pyth raydium       # run this in its own terminal
+# 3. Verify the evidence bundle (any signer, offline)
+rustag verify evidence-bundle.json \
+  --rpc https://my-own-rpc.com \
+  --proposal <SQUADS_PROPOSAL_PUBKEY>
 
-# 4. In another terminal: airdrop, inspect, tail logs
-rustag airdrop -s demo <YOUR_WALLET> 1000
-rustag status  -s demo
-rustag logs    -s demo --follow
+# Output: VALID ✓ — Grade A (deterministically re-executable)
+#         Pre-state root matches: ✓
+#         Post-state root matches: ✓
+#         Signature valid: ✓
+#         Alarms: 0
 ```
 
-Now point any Solana client at `http://127.0.0.1:8899`:
+### Rehearse a raw payload
 
 ```bash
-ANCHOR_PROVIDER_URL=http://127.0.0.1:8899 anchor test
-solana balance <YOUR_WALLET> --url http://127.0.0.1:8899
+# Rehearse a base64-encoded transaction
+rustag rehearse \
+  --payload <BASE64_VERSIONED_TX> \
+  --rpc https://mainnet.helius-rpc.com/?api-key=YOUR_KEY \
+  --signer ./groundtruth-key.json
 ```
 
-The web dashboard lives in [`packages/dashboard`](packages/dashboard):
+### Upgrade-rehearsal CI gate (Phase 3)
 
-```bash
-pnpm install
-NEXT_PUBLIC_RUSTAG_API_URL=http://localhost:9000 pnpm --filter dashboard dev
-# open http://localhost:3000
+```yaml
+# .github/workflows/upgrade-gate.yml
+- uses: rustag/groundtruth-action@v1
+  with:
+    program-id: ${{ env.PROGRAM_ID }}
+    candidate-binary: ./target/deploy/my_program.so
+    rpc: ${{ secrets.MAINNET_RPC }}
+    # Posts signed diff + alarm report to PR, fails on divergence
 ```
 
 ---
 
-## Workspace layout
+## How RustAG Differs from Surfpool
 
-| Crate / package           | What it is                                                            |
-| ------------------------- | -------------------------------------------------------------------- |
-| `crates/rustag-core`      | The runtime: LiteSVM + account state machine + persistence + engine. |
-| `crates/rustag-mirror`    | The mainnet fetcher: JSON-RPC over `reqwest`, registry, rate limiter, real-time push (feature `realtime`). |
-| `crates/rustag-rpc`       | Solana-compatible JSON-RPC + WebSocket + REST (axum).                 |
-| `crates/rustag-cli`       | The `rustag` binary.                                                  |
-| `crates/rustag-scheduler` | **Phase 2** - Activity Scheduler (cron / interval on-chain actions). |
-| `crates/rustag-sim`       | **Phase 2/3** - simulation framework (fork, replay, stress, compare) + MEV bundles, invariant fuzzing, exploit scanner, differential execution. |
-| `crates/rustag-cloud`     | **Phase 2** - multi-tenant cloud control plane (`rustag-cloud`).     |
-| `crates/rustag-attest`    | **Phase 3** - verifiable staging attestation (signed, Merkle-rooted state proofs) + tamper-evident audit log. |
-| `crates/rustag-replay`    | **Phase 3** - time-travel checkpoints, deterministic replay, and fork-of-fork lineage. |
-| `crates/rustag-compression` | **Phase 3** - off-chain `spl-account-compression`-compatible concurrent Merkle tree for compressed-state testing. |
-| `packages/sdk`            | `@rustag/sdk` - TypeScript client for the REST API.                  |
-| `packages/dashboard`      | Next.js 15 dashboard: accounts, transactions, analytics, scheduler.  |
-| `packages/anchor-plugin`  | **Phase 2** - `@rustag/anchor-plugin` ephemeral stagenet for Anchor. |
-| `examples/`               | Runnable examples against a live stagenet.                           |
+RustAG is **not** a local development environment competitor. It **interoperates** with
+Surfpool (the Foundation-canonized integration-testing tool) and fills the layer Surfpool
+explicitly does not occupy.
+
+| | Surfpool | RustAG |
+|---|---|---|
+| **Tier** | Pre-deploy local dev loop | Pre-**sign** / pre-**deploy** assurance |
+| **Design center** | Mutable state (26 cheatcodes) | Pinned, content-addressed, self-contained |
+| **Output** | A running localnet | A signed, offline-re-executable **EvidenceBundle** |
+| **Ingests multisig proposals?** | No | **Yes — the core unit of work** |
+| **Attestation** | None | Ed25519 + SHA-256 Merkle, hash-chained |
+| **Relationship** | — | Can use Surfpool as one execution backend |
 
 ---
 
-## CLI reference
+## Workspace Layout
 
-| Command                                            | Description                              |
-| -------------------------------------------------- | ---------------------------------------- |
-| `rustag create <name>`                             | Register a new stagenet.                 |
-| `rustag start [name] [--preload jupiter pyth ...]` | Run the JSON-RPC, WebSocket, REST servers. |
-| `rustag serve [name] [--preload ...]`              | Create-if-needed, then serve — the one-shot entrypoint for hosted/containerized demos. |
-| `rustag stop [-s name]`                            | Stop a running stagenet.                 |
-| `rustag status [-s name]`                          | Show counts, ports, running state.       |
-| `rustag list`                                      | List all stagenets.                      |
-| `rustag airdrop -s name <pubkey> <sol>`            | Credit SOL to a wallet.                  |
-| `rustag override -s name --pubkey <pk> --lamports <n>` | Pin account state.                   |
-| `rustag preload -s name jupiter pyth raydium`      | Load real mainnet programs/oracles.      |
-| `rustag logs -s name --follow`                     | Tail the transaction feed.               |
-| `rustag schedule add <name> "<expr>" --airdrop <pk> --sol <n>` | **Phase 2** - recurring on-chain activity. |
-| `rustag schedule list / rm <id> / toggle <id>`     | **Phase 2** - manage activities.         |
-| `rustag metrics [--series <s>] [--limit <n>]`      | **Phase 2** - analytics time-series.     |
-| `rustag attest [-s name] [--program <id>]`         | **Phase 3** - write a signed, verifiable attestation of staged state. |
-| `rustag verify <file> [-s name]`                   | **Phase 3** - verify an attestation offline (exits non-zero if INVALID). |
-| `rustag scan [-s name] [--fail-on <severity>]`     | **Phase 3** - scan recorded transactions for exploit signatures (CI gate). |
-| `rustag tree --depth <d> --leaf <x> [--prove <i>]` | **Phase 3** - build an off-chain concurrent Merkle tree, print root + proofs. |
+| Crate / package | What it is |
+| --- | --- |
+| `crates/rustag-core` | Sealed deterministic sandbox: LiteSVM + account state machine + fidelity (ProgramData dereference, Clock sync) + persistence |
+| `crates/rustag-mirror` | Ingest pipeline: lazy mainnet fetch, TouchSetResolver, Squads v4 decoder, MultiRpcFetcher (N-of-M provenance), ForwardRecorder |
+| `crates/rustag-rehearse` | The sealed two-pass rehearsal: `SealedRehearsal::run()` → `EvidenceBundle` with Grade-A re-executability proof |
+| `crates/rustag-attest` | Evidence engine: `EvidenceBundle` v2, Ed25519 signing, Merkle-rooted state proofs, hash-chained audit log |
+| `crates/rustag-replay` | Checkpoint, Journal, deterministic replay, diff_accounts, timeline reconstruction |
+| `crates/rustag-sim` | Invariant policy engine, semantic diff (authority/nonce/treasury/config), exploit scanning, Executor trait |
+| `crates/rustag-rpc` | Solana-compatible JSON-RPC + WebSocket + REST (axum) with `POST /api/rehearse` |
+| `crates/rustag-cli` | The `rustag` binary: `rehearse`, `verify`, `forensics`, `record`, and legacy stagenet commands |
+| `crates/rustag-cloud` | Multi-tenant hosted control plane + Evidence Registry (Phase 5) |
+| `crates/rustag-scheduler` | Internal utility: recorder health, watched-proposal re-fetch |
+| `crates/rustag-compression` | Off-chain concurrent Merkle tree for on-chain anchoring (Phase 5) |
+| `packages/sdk` | `@rustag/sdk` — TypeScript client for the REST API |
+| `packages/dashboard` | Next.js signer-review UI + Evidence Explorer |
+
+---
+
+## CLI Reference
+
+| Command | Description |
+| --- | --- |
+| `rustag rehearse --proposal <PK>` | Rehearse a Squads multisig proposal → signed EvidenceBundle |
+| `rustag rehearse --payload <B64>` | Rehearse a raw base64 transaction |
+| `rustag verify <file.json>` | Verify an EvidenceBundle offline (re-execute + signature check) |
+| `rustag forensics <signature>` | **Phase 4** — Re-execute a historical tx for incident response |
+| `rustag record --program <PK>` | **Phase 3** — Start recording a program's mainnet transactions |
+| `rustag create <name>` | Create a new stagenet (legacy local dev) |
+| `rustag start [name]` | Start a stagenet's JSON-RPC + WS + REST servers |
+| `rustag airdrop -s <name> <pk> <sol>` | Airdrop SOL to a wallet on a stagenet |
+| `rustag scan [-s name]` | Scan recorded transactions for exploit signatures |
+
+---
+
+## Roadmap
+
+### Phase 1 — Wedge: sealed pre-sign rehearsal ✅ (current)
+- Sealed two-pass `SealedRehearsal` with Grade-A re-executability
+- Squads v4 proposal decoder + TouchSetResolver
+- N-of-M multi-RPC provenance
+- Semantic diff with authority/nonce/treasury/config decoders
+- Invariant policy engine with alarm system
+- `rustag rehearse` and `rustag verify` CLI
+
+### Phase 2 — Signer verifier + hosted API + Squads embed
+- Web signer-review UI + one-click offline verifier
+- Hosted `POST /rehearse` with API keys + per-flow metering
+- Squads proposal URL ingestion + embedded "verified execution preview"
+- secp256r1/secp256k1 precompiles for passkey/EVM-wallet proposals
+
+### Phase 3 — Upgrade-rehearsal CI gate + ForwardRecorder
+- Yellowstone gRPC-based per-program transaction corpus
+- `Executor` trait + `PinnedSvmExecutor` + `SurfnetExecutor`
+- GitHub Action step: signed diff + divergence report, fail on alarm
+- Adversarial substitution fuzzing over real mainnet traffic
+
+### Phase 4 — Forensics & counterfactual replay
+- `rustag forensics <signature>` — historical tx re-execution
+- Multi-tx incident timeline reconstruction
+- Counterfactual replay: patch program, replay attack, attested verdict
+- Published Drift and Loopscale deep reconstructions
+
+### Phase 5 — Standard-setting, compliance, monetization
+- Open `EvidenceBundle` spec (in-toto/SLSA-mapped)
+- Hosted Evidence Registry GA with on-chain-anchored heads
+- STRIDE listing + SIRN membership + Foundation RFP submissions
+- Usage-based pricing: free OSS CLI + metered hosted rehearsals
 
 ---
 
@@ -125,63 +230,11 @@ just build      # cargo build --workspace
 just test       # cargo test --workspace
 just lint       # clippy -D warnings + fmt --check
 just ci         # lint + test
-just test-all   # include the network/mainnet tests
 ```
 
-Requires Rust 1.96+ (pinned in `rust-toolchain.toml`), Node 22+, and pnpm 10+.
+Requires Rust 1.85+ (pinned in `rust-toolchain.toml`), Node 22+, and pnpm 10+.
 
 ---
 
-## Status & roadmap
-
-Phase 1 (this repo) is a working MVP — runnable locally *and* as a hosted
-[live demo](https://rustag-demo.onrender.com) (see the top of this README): lazy mirror,
-dirty/clean tracking, unlimited airdrops, overrides, Solana-compatible RPC, persistence,
-CLI, SDK, and dashboard. A one-shot `rustag serve` entrypoint plus a
-[`render.yaml`](render.yaml) blueprint deploy the demo backend behind a public URL, with a
-`RUSTAG_DEMO_MODE` that caps airdrops and disables destructive writes for safe public
-exposure. Known limitation: executing *arbitrary mainnet programs* end-to-end (such as a
-full Jupiter swap) needs the more complete program-loading planned for Phase 2 - your own
-deployed program reading real mainnet state works today.
-
-**Phase 2 (shipped in this repo):**
-
-- **Real-time mirror** - push updates over the `accountSubscribe` WebSocket
-  (the protocol Yellowstone/Geyser RPCs serve), sub-second oracle refresh.
-  Build with `--features realtime`.
-- **Activity Scheduler** - recurring on-chain actions (`@every`/cron).
-- **Simulation framework** - fork a stagenet, replay/stress/compare scenarios
-  ("what if 1,000 users liquidate at once?").
-- **Analytics** - TVL / tx-volume / mirror-growth time-series + dashboard charts.
-- **Cloud control plane** (`rustag-cloud`) - multi-tenant orchestration of hosted
-  stagenets behind a reverse proxy with API-key auth and process isolation.
-- **GitHub Action** - ephemeral stagenet per PR.
-- **Anchor plugin** - `@rustag/anchor-plugin` for tests against real mainnet state.
-
-See [`docs/PHASE2.md`](docs/PHASE2.md) for usage, the
-[Phase 1 completion checklist](docs/phase1-completion-checklist.md), and the
-[Phase 2 master prompt](docs/STAGESVM_PHASE2_PROMPT.md).
-
-**Phase 3 (shipped in this repo) - trust & depth:**
-
-- **Verifiable staging attestation** (`rustag-attest`) - a signed, Merkle-rooted proof of the
-  exact mainnet-derived state a program was tested against, verifiable **offline** by anyone
-  with `rustag verify`. Plus a tamper-evident, hash-chained audit log (SOC 2 groundwork).
-- **Time-travel & deterministic replay** (`rustag-replay`) - checkpoint a stagenet, replay its
-  transaction journal deterministically, diff any two points, and branch forks-of-forks with
-  full lineage.
-- **MEV bundles, fuzzing & exploit scanning** (`rustag-sim`) - atomic Jito-style bundle
-  simulation with tip accounting, deterministic invariant fuzzing, a reproducible
-  exploit-signature scanner, and a differential-execution harness for client-diversity
-  divergence.
-- **State / ZK compression testing** (`rustag-compression`) - an off-chain concurrent Merkle
-  tree matching `spl-account-compression` (keccak-256, changelog, root-history, canopy) so
-  compressed-account programs can be tested and their proofs verified deterministically.
-
-See [`docs/PHASE3.md`](docs/PHASE3.md) and the
-[Phase 3 checklist](docs/phase3-checklist.md).
-
----
-
-*RustAG - because the best DeFi bugs are the ones you find in staging, not on mainnet.*
+*RustAG — because the best DeFi exploits are the ones you rehearse before anyone signs.*
 *Open source. MIT OR Apache-2.0.*

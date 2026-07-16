@@ -49,6 +49,21 @@ impl MainnetMirror {
         self.oracle_registry.contains(pubkey)
     }
 
+    /// Send a raw JSON-RPC request to the endpoint and return the response body.
+    /// Rate-limited like all other calls. Used by [`crate::forward_recorder`].
+    pub async fn http_post(&self, body: &serde_json::Value) -> Result<String, MirrorError> {
+        self.limiter.acquire().await;
+        Ok(self
+            .http
+            .post(&self.endpoint)
+            .json(body)
+            .send()
+            .await?
+            .error_for_status()?
+            .text()
+            .await?)
+    }
+
     /// Fetch a single account, returning `None` if it does not exist on mainnet.
     pub async fn fetch_one(&self, pubkey: &Pubkey) -> Result<Option<RemoteAccount>, MirrorError> {
         Ok(self

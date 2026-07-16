@@ -16,11 +16,14 @@ realtime = ["rustag-core/realtime"]
 rustag-core.workspace = true
 rustag-scheduler.workspace = true
 rustag-sim.workspace = true
+rustag-rehearse.workspace = true
+rustag-attest.workspace = true
 
 solana-pubkey.workspace = true
 solana-transaction.workspace = true
 solana-hash.workspace = true
 solana-signature.workspace = true
+solana-keypair.workspace = true
 
 axum.workspace = true
 tower.workspace = true

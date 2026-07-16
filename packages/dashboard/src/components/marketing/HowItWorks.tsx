@@ -3,18 +3,18 @@ import { Reveal, Section } from "@/components/ui";
 const STEPS = [
   {
     n: "01",
-    title: "Start a stagenet",
-    body: "rustag start spins up a persistent, mainnet-mirroring SVM with a Solana-compatible JSON-RPC, WebSocket, and REST API.",
+    title: "Paste the proposal",
+    body: "Give RustAG a Squads v4 proposal address (or a raw base64 transaction). It fetches the exact pre-state — every account, every ProgramData, the Clock sysvar — from N independent mainnet RPC endpoints.",
   },
   {
     n: "02",
-    title: "Point your Connection",
-    body: "Swap your RPC endpoint to the stagenet URL. Anchor tests, web3.js, and your existing tooling just work - unchanged.",
+    title: "Sealed rehearsal",
+    body: "The payload runs in a sealed, deterministic LiteSVM sandbox against the pinned pre-state snapshot. Two-pass execution: discover all touched accounts, then re-execute with no live RPC calls.",
   },
   {
     n: "03",
-    title: "Test, replay, attest",
-    body: "Airdrop freely, fork and stress-test, time-travel through checkpoints, then export a signed attestation of the exact state you tested.",
+    title: "Sign and verify",
+    body: "Get back a signed EvidenceBundle: semantic diff (11 change types), invariant alarms (ownership, freeze, nonce, drain), compute used, and SHA-256 state roots. Verify offline — independent of the rehearser.",
   },
 ];
 
@@ -23,7 +23,7 @@ export function HowItWorks() {
     <Section
       id="how-it-works"
       eyebrow="How it works"
-      title="From zero to mirrored mainnet in three steps"
+      title="Pre-execution assurance in three steps"
     >
       <Reveal>
         <div className="border-t border-border">

@@ -3295,6 +3295,8 @@ name = "rustag-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64 0.22.1",
+ "bincode",
  "bs58",
  "chrono",
  "clap",
@@ -3305,15 +3307,20 @@ dependencies = [
  "rustag-attest",
  "rustag-compression",
  "rustag-core",
+ "rustag-mirror",
+ "rustag-rehearse",
  "rustag-rpc",
  "rustag-scheduler",
  "rustag-sim",
  "serde",
  "serde_json",
  "solana-keypair",
+ "solana-message",
  "solana-pubkey 4.2.0",
  "solana-signature",
  "solana-signer",
+ "solana-system-interface 3.2.0",
+ "solana-transaction",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -3370,6 +3377,7 @@ dependencies = [
  "solana-account",
  "solana-address 2.6.1",
  "solana-address-lookup-table-interface",
+ "solana-clock",
  "solana-hash 3.1.0",
  "solana-instruction",
  "solana-keypair",
@@ -3408,6 +3416,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustag-rehearse"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "chrono",
+ "hex",
+ "rustag-attest",
+ "rustag-core",
+ "rustag-replay",
+ "rustag-sim",
+ "serde",
+ "serde_json",
+ "solana-hash 3.1.0",
+ "solana-keypair",
+ "solana-message",
+ "solana-pubkey 4.2.0",
+ "solana-signer",
+ "solana-system-interface 3.2.0",
+ "solana-transaction",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "rustag-replay"
 version = "0.1.0"
 dependencies = [
@@ -3442,7 +3476,9 @@ dependencies = [
  "chrono",
  "futures-util",
  "reqwest",
+ "rustag-attest",
  "rustag-core",
+ "rustag-rehearse",
  "rustag-scheduler",
  "rustag-sim",
  "serde",
@@ -3507,6 +3543,7 @@ dependencies = [
  "thiserror 2.0.18",
  "tokio",
  "tracing",
+ "uuid",
 ]
 
 [[package]]

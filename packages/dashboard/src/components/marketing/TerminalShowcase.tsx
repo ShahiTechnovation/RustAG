@@ -1,19 +1,22 @@
 import { Reveal, Section, Terminal } from "@/components/ui";
 
-const COPY_TEXT = `# start a stagenet
-rustag start
+const COPY_TEXT = `# rehearse a Squads multisig proposal
+rustag rehearse \\
+  --proposal 7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU \\
+  --rpc $HELIUS_RPC
 
-import { RustagClient } from "@rustag/sdk";
-import { Connection } from "@solana/web3.js";
+# or rehearse a raw transaction
+rustag rehearse --payload <base64_tx> --rpc $RPC
 
-const client = new RustagClient({ baseUrl: "http://localhost:9000" });
-const stagenet = await client.getStagenet();
+# forensics: was this historical exploit stoppable?
+rustag forensics <SIGNATURE> \\
+  --rpc $RPC \\
+  --patch ./patched-program.so \\
+  --patch-program <PROGRAM_ID>
 
-// unlimited, instant, free
-await client.airdrop(wallet, 1000);
-
-// drop-in Solana connection against the stagenet
-const connection = new Connection(stagenet.rpcUrl);`;
+# verify the bundle offline (no RPC needed)
+rustag verify groundtruth-bundle.json \\
+  --closure groundtruth-closure.json`;
 
 const C = {
   comment: "text-faint",
@@ -22,64 +25,51 @@ const C = {
   fn: "text-accent-2",
   punct: "text-muted",
   plain: "text-fg",
+  flag: "text-brand/70",
 };
 
 export function TerminalShowcase() {
   return (
     <Section
-      eyebrow="Drop-in"
-      title="Point your Connection at it and go"
-      description="RustAG speaks the Solana JSON-RPC. Swap your endpoint - your existing tooling and tests just work."
+      eyebrow="CLI-first"
+      title="Rehearse, attest, and verify in minutes"
+      description="Paste a Squads proposal address — RustAG fetches it, rehearses it against live mainnet state, and returns a signed EvidenceBundle you can verify offline."
       containerClassName="max-w-3xl"
     >
       <Reveal>
-        <Terminal title="bash · typescript" copyText={COPY_TEXT}>
-          <pre className="whitespace-pre">
-            <span className={C.comment}># start a stagenet{"\n"}</span>
+        <Terminal title="bash" copyText={COPY_TEXT}>
+          <pre className="whitespace-pre text-xs leading-relaxed sm:text-sm">
+            <span className={C.comment}># rehearse a Squads multisig proposal{"\n"}</span>
             <span className={C.plain}>rustag </span>
-            <span className={C.fn}>start</span>
+            <span className={C.fn}>rehearse</span>
+            {" \\\n  "}
+            <span className={C.flag}>--proposal </span>
+            <span className={C.str}>7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU</span>
+            {" \\\n  "}
+            <span className={C.flag}>--rpc </span>
+            <span className={C.str}>$HELIUS_RPC</span>
             {"\n\n"}
-            <span className={C.kw}>import</span>
-            <span className={C.punct}> {"{"} </span>
-            <span className={C.plain}>RustagClient</span>
-            <span className={C.punct}> {"}"} </span>
-            <span className={C.kw}>from</span> <span className={C.str}>&quot;@rustag/sdk&quot;</span>
-            <span className={C.punct}>;</span>
+            <span className={C.comment}># forensics: was this exploit stoppable?{"\n"}</span>
+            <span className={C.plain}>rustag </span>
+            <span className={C.fn}>forensics</span>
+            <span className={C.punct}> &lt;SIGNATURE&gt;</span>
+            {" \\\n  "}
+            <span className={C.flag}>--rpc </span>
+            <span className={C.str}>$RPC</span>
+            {" \\\n  "}
+            <span className={C.flag}>--patch </span>
+            <span className={C.str}>./patched-program.so</span>
+            {"\n\n"}
+            <span className={C.comment}># verify the bundle offline (no RPC needed){"\n"}</span>
+            <span className={C.plain}>rustag </span>
+            <span className={C.fn}>verify</span>
+            <span className={C.punct}> groundtruth-bundle.json</span>
+            {" \\\n  "}
+            <span className={C.flag}>--closure </span>
+            <span className={C.str}>groundtruth-closure.json</span>
             {"\n"}
-            <span className={C.kw}>import</span>
-            <span className={C.punct}> {"{"} </span>
-            <span className={C.plain}>Connection</span>
-            <span className={C.punct}> {"}"} </span>
-            <span className={C.kw}>from</span> <span className={C.str}>&quot;@solana/web3.js&quot;</span>
-            <span className={C.punct}>;</span>
-            {"\n\n"}
-            <span className={C.kw}>const</span> <span className={C.plain}>client</span>
-            <span className={C.punct}> = </span>
-            <span className={C.kw}>new</span> <span className={C.fn}>RustagClient</span>
-            <span className={C.punct}>({"{"} baseUrl: </span>
-            <span className={C.str}>&quot;http://localhost:9000&quot;</span>
-            <span className={C.punct}> {"}"});</span>
-            {"\n"}
-            <span className={C.kw}>const</span> <span className={C.plain}>stagenet</span>
-            <span className={C.punct}> = </span>
-            <span className={C.kw}>await</span> <span className={C.plain}>client</span>
-            <span className={C.punct}>.</span>
-            <span className={C.fn}>getStagenet</span>
-            <span className={C.punct}>();</span>
-            {"\n\n"}
-            <span className={C.comment}>// unlimited, instant, free{"\n"}</span>
-            <span className={C.kw}>await</span> <span className={C.plain}>client</span>
-            <span className={C.punct}>.</span>
-            <span className={C.fn}>airdrop</span>
-            <span className={C.punct}>(wallet, </span>
-            <span className={C.str}>1000</span>
-            <span className={C.punct}>);</span>
-            {"\n\n"}
-            <span className={C.comment}>// drop-in Solana connection against the stagenet{"\n"}</span>
-            <span className={C.kw}>const</span> <span className={C.plain}>connection</span>
-            <span className={C.punct}> = </span>
-            <span className={C.kw}>new</span> <span className={C.fn}>Connection</span>
-            <span className={C.punct}>(stagenet.rpcUrl);</span>
+            <span className={C.kw}>✓ </span>
+            <span className={C.plain}>Grade A · signature valid · pre-state root matches</span>
           </pre>
         </Terminal>
       </Reveal>

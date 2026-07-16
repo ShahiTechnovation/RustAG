@@ -12,6 +12,8 @@ members = [
     "crates/rustag-attest",
     "crates/rustag-replay",
     "crates/rustag-compression",
+    # --- GroundTruth pivot ---
+    "crates/rustag-rehearse",
 ]
 
 [workspace.package]
@@ -22,9 +24,9 @@ license = "MIT OR Apache-2.0"
 authors = ["RustAG contributors"]
 repository = "https://github.com/ShahiTechnovation/RustAG"
 homepage = "https://github.com/ShahiTechnovation/RustAG"
-description = "A persistent, mainnet-mirroring staging environment for Solana programs"
-keywords = ["solana", "svm", "testing", "litesvm", "devtools"]
-categories = ["development-tools", "simulation"]
+description = "Attested pre-execution assurance for Solana privileged operations — rehearse any privileged Solana transaction against faithful mainnet state and get a signed, offline-verifiable evidence bundle"
+keywords = ["solana", "svm", "multisig", "attestation", "security", "pre-execution"]
+categories = ["development-tools", "cryptography", "command-line-utilities"]
 
 # ----------------------------------------------------------------------------
 # Workspace dependency set.
@@ -56,6 +58,9 @@ solana-signer = "3"               # Signer trait
 solana-system-interface = "3"     # system program instructions (transfer, etc.)
 solana-address-lookup-table-interface = { version = "3", features = ["bincode"] } # v0 LUT resolution
 solana-transaction-status-client-types = "3"
+# Clock sysvar (pinned into the SVM by `rustag-core::fidelity` so time-dependent
+# program logic - vesting, funding windows, staleness - rehearses faithfully).
+solana-clock = "3"
 
 # --- JSON-RPC server ---
 jsonrpsee = { version = "0.24", features = ["server", "macros"] }
@@ -150,6 +155,7 @@ rustag-cloud = { path = "crates/rustag-cloud" }
 rustag-attest = { path = "crates/rustag-attest" }
 rustag-replay = { path = "crates/rustag-replay" }
 rustag-compression = { path = "crates/rustag-compression" }
+rustag-rehearse = { path = "crates/rustag-rehearse" }
 
 [profile.release]
 opt-level = 3
