@@ -8,7 +8,8 @@ const COLUMNS = [
     title: "Product",
     links: [
       { label: "Overview", href: "/app" },
-      { label: "Accounts", href: "/app/accounts" },
+      { label: "Rehearse", href: "/app/rehearse" },
+      { label: "Forensics", href: "/app/forensics" },
       { label: "Analytics", href: "/app/analytics" },
       { label: "Simulations", href: "/app/simulations" },
     ],
@@ -16,10 +17,11 @@ const COLUMNS = [
   {
     title: "Features",
     links: [
-      { label: "The mirror", href: "#the-mirror" },
-      { label: "Scheduler", href: "/app/schedules" },
-      { label: "Attestation", href: "#features" },
-      { label: "Time-travel", href: "#features" },
+      { label: "Squads v4 decoder", href: "#features" },
+      { label: "Invariant alarms", href: "#features" },
+      { label: "EvidenceBundle", href: "#features" },
+      { label: "Upgrade CI gate", href: "#features" },
+      { label: "Time-travel replay", href: "#features" },
     ],
   },
   {
@@ -28,6 +30,7 @@ const COLUMNS = [
       { label: "Docs", href: "/docs" },
       { label: "How it works", href: "#how-it-works" },
       { label: "GitHub", href: "https://github.com/ShahiTechnovation/RustAG" },
+      { label: "Early access", href: "/early-access" },
     ],
   },
 ];
@@ -39,8 +42,8 @@ export function Footer() {
         <div>
           <Logo />
           <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted">
-            Tenderly Virtual TestNets for Solana - a persistent, mainnet-mirroring staging
-            environment.
+            The GroundTruth pre-execution assurance layer for Solana — know exactly what a
+            transaction does before any multisig signer approves it.
           </p>
           <a
             href="https://github.com/ShahiTechnovation/RustAG"
@@ -68,7 +71,7 @@ export function Footer() {
         ))}
       </div>
       <div className="mx-auto mt-12 max-w-6xl border-t border-border pt-6 text-xs text-faint">
-        © {new Date().getFullYear()} RustAG. Built for Solana developers.
+        © {new Date().getFullYear()} RustAG · GroundTruth for Solana. Built for the ecosystem.
       </div>
     </footer>
   );

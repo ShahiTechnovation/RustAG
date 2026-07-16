@@ -11,28 +11,28 @@ const STATES: { state: SyncState; dot: string; ring: string; text: string; desc:
     dot: "bg-state-unknown",
     ring: "border-state-unknown/30",
     text: "text-faint",
-    desc: "Never touched. Not yet fetched from mainnet.",
+    desc: "Never fetched. Pulled on first access during rehearsal closure resolution.",
   },
   {
     state: "Clean",
     dot: "bg-state-clean",
     ring: "border-state-clean/30",
     text: "text-state-clean",
-    desc: "Mirrored from mainnet, unmodified. Auto-refreshes with live state.",
+    desc: "Content-addressed snapshot from mainnet. Used as the sealed pre-state root.",
   },
   {
     state: "Dirty",
     dot: "bg-state-dirty",
     ring: "border-state-dirty/30",
     text: "text-state-dirty",
-    desc: "Modified locally. Frozen from mainnet sync so your test stays put.",
+    desc: "Modified by the rehearsed payload. Frozen — captured in the post-state root.",
   },
   {
     state: "Pinned",
     dot: "bg-state-pinned",
     ring: "border-state-pinned/35",
     text: "text-state-pinned",
-    desc: "Explicitly overridden. Locked to exactly the value you set.",
+    desc: "Explicitly overridden via --patch in forensics mode. Locked to the patched ELF.",
   },
 ];
 
@@ -41,13 +41,16 @@ export function MirrorExplainer() {
     <section id="the-mirror" className="relative scroll-mt-24 px-6 py-24 sm:py-32">
       <div className="mx-auto max-w-5xl text-center">
         <Reveal>
-          <div className="label mb-5 justify-center text-brand">The account state machine</div>
+          <div className="label mb-5 justify-center text-brand">The faithful pre-state model</div>
           <p className="mx-auto max-w-3xl text-balance font-serif text-3xl italic leading-snug text-fg sm:text-[2.6rem]">
-            “Clean until you touch it. Dirty when you do. Pinned when you mean it.”
+            "Pinned before execution. Sealed during. Signed after."
           </p>
           <p className="mx-auto mt-5 max-w-2xl text-pretty text-base leading-relaxed text-muted">
-            Every account carries a sync state. It&apos;s how RustAG replays mainnet on a local SVM
-            with no block hash to fork from - and the single idea the whole product is built around.
+            Every account in the rehearsal closure carries a sync state. This is how RustAG
+            produces a{" "}
+            <span className="text-fg">content-addressed, tamper-evident pre-state root</span>{" "}
+            — the cryptographic foundation that makes an EvidenceBundle independently verifiable
+            by anyone, with no trust in the rehearser.
           </p>
         </Reveal>
 

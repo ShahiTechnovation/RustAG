@@ -12,7 +12,7 @@ import { StatePill } from "@/components/ui";
 export const metadata: Metadata = {
   title: "Core concepts",
   description:
-    "The lazy account mirror and the Unknown → Clean → Dirty → Pinned account state machine — the single idea the whole of RustAG is built around.",
+    "The sealed two-pass rehearsal, the EvidenceBundle format, and the faithful pre-state model — the account closure and sync-state machine that makes GroundTruth independently verifiable.",
 };
 
 const TOC: TocItem[] = [
@@ -50,8 +50,8 @@ export default function ConceptsPage() {
   return (
     <DocArticle
       eyebrow="Core concepts"
-      title="The lazy mirror"
-      lead="RustAG replays mainnet on a local SVM with no block to fork from. It does that by fetching the exact accounts a transaction touches, on first access, and tracking every write through a four-state machine."
+      title="The faithful pre-state model"
+      lead="RustAG produces a content-addressed, tamper-evident pre-state closure of every account a proposed transaction will touch. This closure is the cryptographic foundation of the EvidenceBundle — it's what makes a rehearsal independently verifiable by anyone."
       toc={TOC}
     >
       <H2 id="lazy-mirror">The lazy account mirror</H2>
@@ -219,12 +219,25 @@ Background: re-fetch Clean ORACLE accounts every 30s
         test stays deterministic.
       </Callout>
 
-      <H2 id="why-staging">Why staging, not testnet</H2>
+      <H2 id="why-staging">Why this enables independent verification</H2>
       <p>
-        RustAG is a <em>staging</em> environment, not another testnet — and that distinction is the whole
-        value proposition. Devnet pools are empty or fake, faucets cap around ~5 SOL/day while an
-        integration suite needs 20–50 SOL/day, and you can&apos;t fork the SVM at a block the way EVM tools
-        do. RustAG mirrors the actual mainnet account state on demand instead.
+        The account sync-state machine is what makes an EvidenceBundle <strong>Grade A</strong> — deterministically
+        re-executable by anyone, independent of the rehearser.
+      </p>
+      <p>
+        Because every account in the pre-state closure is <code>Clean</code> (content-addressed from mainnet
+        at a known slot) or <code>Pinned</code> (explicitly set by the verifier), a third party can:
+      </p>
+      <ol>
+        <li>Re-fetch the closure from their own RPC endpoint (not the rehearser&apos;s).</li>
+        <li>Compare the SHA-256 <code>pre_state_root</code> with the bundle&apos;s claim.</li>
+        <li>Re-execute the payload and compare <code>post_state_root</code>.</li>
+        <li>Check the Ed25519 signature over all of the above.</li>
+      </ol>
+      <p>
+        A compromised proposer UI cannot produce a valid Grade A bundle for a different payload.
+        The state machine ensures the pre-state is pinned before execution, sealed during, and
+        signed after — with no escape hatch.
       </p>
 
       <div className="my-6 overflow-x-auto rounded-[4px] border border-border">

@@ -36,21 +36,21 @@ export function StatsBand() {
                     )}
                   />
                 </span>
-                {live ? `Live demo · slot ${data.slot.toLocaleString()}` : "Live demo"}
+                {live ? `Assurance live · slot ${data.slot.toLocaleString()}` : "Live demo"}
               </span>
             </div>
 
             <div className="grid grid-cols-2 divide-x divide-y divide-border lg:grid-cols-4 lg:divide-y-0">
               <Stat
                 value={live ? <AnimatedNumber value={data.accounts} /> : "—"}
-                label="Mainnet accounts mirrored"
+                label="Accounts in pre-state closure"
               />
               <Stat
                 value={live ? <AnimatedNumber value={data.transactions} /> : "—"}
-                label="Transactions executed"
+                label="Rehearsals executed"
               />
               <Stat value="$0" label="Mainnet SOL spent" />
-              <Stat value="∞" label="Free airdrops" />
+              <Stat value="Grade A" label="Fidelity standard" />
             </div>
           </div>
         </Reveal>

@@ -2,7 +2,7 @@
   "name": "rustag",
   "version": "0.1.0",
   "private": true,
-  "description": "RustAG - a persistent, mainnet-mirroring staging environment for Solana programs",
+  "description": "RustAG — GroundTruth pre-execution assurance for Solana. Rehearse Squads proposals, get signed EvidenceBundles, run counterfactual forensics.",
   "packageManager": "pnpm@10.27.0",
   "engines": {
     "node": ">=22"

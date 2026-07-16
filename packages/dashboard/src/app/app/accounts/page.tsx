@@ -8,7 +8,7 @@ export default function AccountsPage() {
       <div>
         <h1 className="font-display text-3xl font-bold tracking-tight text-fg">Accounts</h1>
         <p className="mt-1 text-sm text-muted">
-          Every account in the stagenet, with its mainnet-sync state.
+          Every account in the pre-state closure — Clean (pinned from mainnet), Dirty (modified by rehearsal), Pinned (overridden).
         </p>
       </div>
       <AccountsTable />

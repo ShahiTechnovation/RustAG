@@ -10,9 +10,9 @@ import { cn } from "@/lib/cn";
 
 const LINKS = [
   { href: "#features", label: "Features" },
-  { href: "#the-mirror", label: "The mirror" },
   { href: "#how-it-works", label: "How it works" },
   { href: "/docs", label: "Docs" },
+  { href: "/app/rehearse", label: "Rehearse" },
 ];
 
 export function SiteHeader() {
@@ -60,8 +60,8 @@ export function SiteHeader() {
           >
             <GitHubIcon size={18} />
           </a>
-          <ButtonLink href="/app" size="sm" className="hidden sm:inline-flex">
-            Live demo
+          <ButtonLink href="/app/rehearse" size="sm" className="hidden sm:inline-flex">
+            Rehearse
           </ButtonLink>
           <ButtonLink href="/early-access" size="sm" variant="secondary">
             Early access
