@@ -1,0 +1,138 @@
+"use client";
+import Link from "next/link";
+import { ArrowUpRight, ArrowRight, Check, ShieldCheck, Fingerprint, GitBranch, LockKeyhole, MoveRight } from "lucide-react";
+import { NetworkStatus } from "@/components/Shell";
+import { useNetwork } from "@/components/NetworkProvider";
+import { explorerUrl } from "@/lib/evm/explorer";
+import { DEMO_ADDRESSES } from "@/lib/rehearsal/client";
+
+export default function Home() {
+  const { network, chain } = useNetwork();
+  const safe = DEMO_ADDRESSES.safe;
+  const proxy = DEMO_ADDRESSES.proxy;
+  return (
+    <div className="home">
+      <section className="hero">
+        <div className="hero-copy">
+          <div className="eyebrow"><span className="dot" /> BUILT FOR ROBINHOOD CHAIN</div>
+          <h1>Know what the<br />transaction will do<br /><span>before you sign it.</span></h1>
+          <p className="hero-description">
+            Pre-execution assurance for Robinhood Chain.<br />
+            Inspect calls, state changes and permissions before a privileged transaction becomes permanent.
+          </p>
+          <div className="cta-row">
+            <Link className="button primary" href="/rehearse">Rehearse Transaction <ArrowUpRight size={17} /></Link>
+            <Link className="text-link" href="/evidence">Explore evidence <ArrowRight size={16} /></Link>
+          </div>
+          <div className="hero-note"><LockKeyhole size={12} /> Read-only connection. No signature required.</div>
+        </div>
+        <div className="preview-wrap">
+          <div className="preview-topline">
+            <span>TRANSACTION INTELLIGENCE</span>
+            <span className="demo-badge">DEMO PREVIEW</span>
+          </div>
+          <div className="transaction-card">
+            <div className="card-heading">
+              <span className="icon-box"><GitBranch size={20} /></span>
+              <div>
+                <span className="overline">PROPOSED TRANSACTION</span>
+                <h3>Treasury implementation upgrade</h3>
+              </div>
+              <span className="tx-number">01</span>
+            </div>
+            <dl className="transaction-fields">
+              <div>
+                <dt>Executor</dt>
+                <dd>
+                  <a href={explorerUrl(network, "address", safe)} target="_blank" rel="noreferrer">
+                    0x1111&#8230;1111 <ArrowUpRight size={11} />
+                  </a>
+                  <span className="tiny-tag">Safe</span>
+                </dd>
+              </div>
+              <div>
+                <dt>Target</dt>
+                <dd>
+                  <a href={explorerUrl(network, "address", proxy)} target="_blank" rel="noreferrer">
+                    0x2222&#8230;2222 <ArrowUpRight size={11} />
+                  </a>
+                  <span className="tiny-tag">Proxy</span>
+                </dd>
+              </div>
+              <div><dt>Network</dt><dd>{chain.name}</dd></div>
+              <div><dt>Value</dt><dd>0 ETH</dd></div>
+            </dl>
+            <div className="method">
+              <span>CALL</span>
+              <code>upgradeToAndCall(&#8230;)</code>
+            </div>
+          </div>
+          <div className="connector-line"><span /><ShieldCheck size={18} /><span /></div>
+          <div className="preview-result">
+            <div className="result-title">
+              <span className="check-circle"><Check size={17} /></span>
+              <div>
+                <h3>Execution succeeds</h3>
+                <p>Illustrative result &middot; no RPC execution</p>
+              </div>
+              <span className="demo-label">PREVIEW</span>
+            </div>
+            <div className="preview-stats">
+              {[["6", "State changes"], ["2", "Balance changes"], ["1", "Permission change"]].map(([value, label]) => (
+                <div key={label}><strong>{value}</strong><span>{label}</span></div>
+              ))}
+            </div>
+            <div className="warning-row">
+              <span>!</span> Unlimited token approval <span className="severity high">HIGH</span>
+            </div>
+            <Link href="/evidence" className="preview-bottom">
+              Inspect execution evidence <ArrowUpRight size={15} />
+            </Link>
+          </div>
+          <div className="preview-caption">ILLUSTRATIVE DATA / NOT AN EXECUTION ATTESTATION</div>
+        </div>
+      </section>
+
+      <NetworkStatus />
+
+      <section className="use-cases">
+        <span>BUILT FOR HIGH-STAKES CALLS</span>
+        <div>Multisig execution</div>
+        <div>Contract upgrades</div>
+        <div>Treasury transfers</div>
+        <div>Role changes</div>
+      </section>
+
+      <section className="features">
+        <div className="section-heading">
+          <div className="eyebrow">EVERY CHANGE. BEFORE COMMITMENT.</div>
+          <h2>From opaque calldata<br />to a clear decision.</h2>
+          <p>A workspace for reviewing what matters.<br />The EVM rehearsal engine is the next phase.</p>
+        </div>
+        <div className="feature-grid">
+          {(
+            [
+              [GitBranch, "01", "Follow the execution.", "Inspect nested calls, delegatecalls and reverts in an expandable execution tree."],
+              [MoveRight, "02", "See what changes.", "Compare balances, ownership, allowances and contract storage side by side."],
+              [Fingerprint, "03", "Keep the evidence.", "An evidence model built for chain provenance, state commitments and future attestations."],
+            ] as const
+          ).map(([Icon, num, title, body]) => (
+            <article key={num}>
+              <div className="feature-top"><Icon size={23} /><span>{num}</span></div>
+              <h3>{title}</h3>
+              <p>{body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="bottom-cta">
+        <div>
+          <span className="eyebrow">A BETTER CHECKPOINT</span>
+          <h2>Make the next signature<br />an informed one.</h2>
+        </div>
+        <Link href="/rehearse" className="button primary">Open the rehearsal workspace <ArrowUpRight size={17} /></Link>
+      </section>
+    </div>
+  );
+}
