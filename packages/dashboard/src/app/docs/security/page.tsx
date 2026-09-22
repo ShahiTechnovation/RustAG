@@ -206,7 +206,7 @@ rustag verify bundle.json --closure closure.json   # offline, exit 1 if INVALID
       <SloTable
         rows={[
           ["Rehearsal API (POST /api/rehearse) uptime", "99.5% / mo", "Target"],
-          ["Grade A bundle latency (Helius RPC)", "p99 < 8 s", "Target"],
+          ["Grade A bundle latency (Alchemy RPC)", "p99 < 8 s", "Target"],
           ["Grade A bundle latency (cached closure)", "p99 < 2 s", "Target"],
           ["getAccountInfo closure hit", "p99 < 50 ms", "Target"],
           ["Oracle price staleness (realtime, Phase 2)", "p99 < 2 s", "Target"],
@@ -232,7 +232,7 @@ rustag verify bundle.json --closure closure.json   # offline, exit 1 if INVALID
           <strong>Foreign program execution</strong> — the closure resolver fetches program
           accounts verbatim (readable and present), but does not yet JIT-load BPF bytecode from
           the program-data account. Rehearsing a multisig proposal that itself invokes a complex
-          foreign program (e.g., a full Jupiter swap CPI) may produce a Grade B bundle if the
+          foreign program (e.g., a full Uniswap swap CPI) may produce a Grade B bundle if the
           bytecode is unavailable. Your own deployed program reading real mainnet state works today.
         </li>
         <li>

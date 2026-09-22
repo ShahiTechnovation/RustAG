@@ -11,8 +11,8 @@ import { LogoMark } from "@/components/LogoMark";
 import { cn } from "@/lib/cn";
 
 const ROWS = [
-  { label: "Pyth · SOL/USD", pubkey: "H6AR…jcW9", base: 147.82, step: 0.41 },
-  { label: "Raydium pool", pubkey: "58oQ…b3Rt", base: 84120, step: 260 },
+  { label: "Oracle · ETH/USD", pubkey: "H6AR…jcW9", base: 147.82, step: 0.41 },
+  { label: "Uniswap pool", pubkey: "58oQ…b3Rt", base: 84120, step: 260 },
   { label: "Your wallet", pubkey: "9xQe…F4kP", base: 1000, step: 18 },
 ];
 
@@ -103,7 +103,7 @@ export function MirrorPipeline() {
       <div className="bg-grid pointer-events-none absolute inset-0 opacity-40" aria-hidden />
 
       <div className="relative flex flex-col items-stretch md:flex-row md:items-center md:justify-between">
-        <Node icon={<Globe size={18} />} title="Mainnet" sub="Helius / Triton" />
+        <Node icon={<Globe size={18} />} title="Mainnet" sub="Alchemy / Infura" />
         <Flow />
         <Node icon={<LogoMark size={26} />} title="RustAG mirror" sub="fetch · cache · track" highlight />
         <Flow />

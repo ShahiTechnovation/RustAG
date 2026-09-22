@@ -40,12 +40,12 @@ export default function QuickstartPage() {
         <li>
           <strong>A mainnet RPC endpoint</strong> — the source the closure resolver fetches real
           state from. A free{" "}
-          <a href="https://helius.dev" target="_blank" rel="noreferrer">
-            Helius
+          <a href="https://alchemy.com" target="_blank" rel="noreferrer">
+            Alchemy
           </a>{" "}
           or{" "}
           <a href="https://triton.one" target="_blank" rel="noreferrer">
-            Triton
+            Infura
           </a>{" "}
           key is strongly recommended. The built-in demo works without one.
         </li>
@@ -99,7 +99,7 @@ rustag --help       # lists all subcommands`}
       </p>
       <CodeBlock
         lang="bash"
-        code={`export RUSTAG_MAINNET_RPC="https://mainnet.helius-rpc.com/?api-key=YOUR_KEY"
+        code={`export RUSTAG_MAINNET_RPC="https://mainnet.alchemy.com/?api-key=YOUR_KEY"
 
 rustag rehearse \\
   --proposal 7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU \\
@@ -163,7 +163,7 @@ rustag forensics <SIGNATURE> \\
       <CodeBlock
         lang="bash"
         code={`# Start the REST + RPC backend
-export RUSTAG_MAINNET_RPC="https://mainnet.helius-rpc.com/?api-key=YOUR_KEY"
+export RUSTAG_MAINNET_RPC="https://mainnet.alchemy.com/?api-key=YOUR_KEY"
 rustag serve
 
 # Start the Next.js dashboard (separate terminal)

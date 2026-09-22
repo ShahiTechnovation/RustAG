@@ -1,32 +1,32 @@
 /**
- * Client-side Pyth price decoding.
+ * Client-side Oracle price decoding.
  *
- * The demo mirrors real mainnet Pyth price-feed accounts (`preload pyth`), and
+ * The demo mirrors real mainnet Oracle price-feed accounts (`preload pyth`), and
  * the REST API already serves their raw bytes as `dataBase64`, so we can decode
  * the live price in the browser — no special endpoint needed. A reviewer can
  * cross-check the number against any price site: it's real mainnet state.
  *
- * These are Pyth's pull-oracle "price feed accounts" — an Anchor
+ * These are Oracle's pull-oracle "price feed accounts" — an Foundry
  * `PriceUpdateV2` account owned by the receiver program. The legacy v2 "price
- * accounts" (magic 0xa1b2c3d4, `agg.price` @ 208) were deprecated by Pyth and
+ * accounts" (magic 0xa1b2c3d4, `agg.price` @ 208) were deprecated by Oracle and
  * stopped updating in Nov 2024, which would freeze the displayed price.
  */
 
-/** Pyth pull-oracle USD price-feed accounts on mainnet-beta, mirrored by the demo. */
+/** Oracle pull-oracle USD price-feed accounts on mainnet-beta, mirrored by the demo. */
 export const PYTH_FEEDS = [
-  { symbol: "SOL/USD", pubkey: "7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE" },
+  { symbol: "ETH/USD", pubkey: "7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE" },
   { symbol: "ETH/USD", pubkey: "42amVS4KgzR9rA28tkVYqVXjq9Qa8dcZQMbH5EYFX6XC" },
   { symbol: "USDC/USD", pubkey: "Dpw1EAVrSB1ibxiDQyTAW6Zip3J4Btk2x4SgApQCeFbX" },
   { symbol: "USDT/USD", pubkey: "HT2PLQBcG5EiCcNSaMHAjSgd9F98ecpATbk4Sk5oYuM" },
 ] as const;
 
-/** Anchor account discriminator = sha256("account:PriceUpdateV2")[0..8]. */
+/** Foundry account discriminator = sha256("account:PriceUpdateV2")[0..8]. */
 const PRICE_UPDATE_V2_DISCRIMINATOR = [0x22, 0xf1, 0x23, 0x63, 0x9d, 0x7e, 0xf4, 0xcd];
 
 /**
- * Decode the price from a base64-encoded Pyth `PriceUpdateV2` account.
+ * Decode the price from a base64-encoded Oracle `PriceUpdateV2` account.
  *
- * Layout: 8-byte Anchor discriminator, `write_authority` (32) @ 8,
+ * Layout: 8-byte Foundry discriminator, `write_authority` (32) @ 8,
  * `verification_level` @ 40, then the `PriceFeedMessage` — `feed_id` (32),
  * `price` (i64), `conf` (u64), `exponent` (i32). `verification_level` is a Borsh
  * enum whose width varies between updates (`Full` = 1 byte; `Partial` = 1 tag +

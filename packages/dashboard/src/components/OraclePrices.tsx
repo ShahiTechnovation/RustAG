@@ -22,7 +22,7 @@ function LiveDot({ live }: { live: boolean }) {
 }
 
 /**
- * Real mainnet Pyth prices, decoded in the browser from the mirrored account
+ * Real mainnet Oracle prices, decoded in the browser from the mirrored account
  * bytes. `compact` renders a one-line strip (for the landing); the default is a
  * titled panel (for the app).
  */
@@ -36,7 +36,7 @@ export function OraclePrices({ compact = false }: { compact?: boolean }) {
       <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm">
         <span className="label inline-flex items-center gap-1.5 text-brand">
           <LiveDot live={live} />
-          Live Pyth
+          Live Market Data
         </span>
         {rows.map((d) => (
           <span key={d.symbol} className="font-mono">
@@ -61,7 +61,7 @@ export function OraclePrices({ compact = false }: { compact?: boolean }) {
           )}
         >
           <LiveDot live={live} />
-          Pyth
+          Oracle
         </span>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -75,7 +75,7 @@ export function OraclePrices({ compact = false }: { compact?: boolean }) {
         ))}
       </div>
       <p className="mt-3 text-xs text-faint">
-        Decoded in your browser from real mainnet Pyth accounts — cross-check against any price
+        Decoded in your browser from real mainnet Oracle accounts — cross-check against any price
         site. Auto-refreshed ~30s.
       </p>
     </div>

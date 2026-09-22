@@ -333,7 +333,7 @@ SemanticChange::DataWritten        { pubkey, len }
           <code>Timeline</code> diffs, and fork-of-fork <code>Lineage</code>.
         </li>
         <li>
-          <strong>Adversarial simulation</strong> (<code>rustag-sim</code>) — atomic Jito-style
+          <strong>Adversarial simulation</strong> (<code>rustag-sim</code>) — atomic MEV-style
           bundles with tip accounting, deterministic invariant fuzzing, and a reproducible
           exploit-signature scanner.
         </li>

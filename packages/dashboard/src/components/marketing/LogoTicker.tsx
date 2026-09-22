@@ -1,6 +1,6 @@
 import { Marquee } from "@/components/ui";
 
-const PROTOCOLS = ["Jupiter", "Pyth", "Raydium", "Orca", "Marinade", "SPL Token", "Anchor", "Helius"];
+const PROTOCOLS = ["UNISWAP", "PLEIADES", "CHAINLINK", "ALCHEMY", "ALLIUM", "LAYERZERO", "BITGO", "TRM LABS", "BLOCKSCOUT", "QUICKNODE"];
 
 export function LogoTicker() {
   return (

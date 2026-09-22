@@ -14,7 +14,7 @@ type Row = { label: string; pubkey: string; sol: number; state: SyncState };
 // Shown only when the demo backend is unreachable/asleep — clearly an
 // illustration, replaced by real mirrored accounts the moment data arrives.
 const FALLBACK: Row[] = [
-  { label: "Oracle · Pyth", pubkey: "H6AR…jcW9", sol: 0.023, state: "Clean" },
+  { label: "Oracle · Oracle", pubkey: "H6AR…jcW9", sol: 0.023, state: "Clean" },
   { label: "Token program", pubkey: "Toke…5DA", sol: 0, state: "Clean" },
   { label: "Demo wallet", pubkey: "US51…LFx", sol: 5.01, state: "Dirty" },
 ];
@@ -26,7 +26,7 @@ function short(pk: string) {
 function labelFor(a: AccountInfo): string {
   switch (a.category) {
     case "Oracle":
-      return "Oracle · Pyth";
+      return "Oracle · Oracle";
     case "TokenMint":
       return "Token mint";
     case "Program":

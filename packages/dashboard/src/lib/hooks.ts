@@ -12,7 +12,7 @@ export interface OraclePrice {
   syncState: string | null;
 }
 
-/** Live Pyth prices, decoded in the browser from the mirrored account bytes. */
+/** Live Market Data prices, decoded in the browser from the mirrored account bytes. */
 export function useOraclePrices() {
   return useQuery({
     queryKey: ["oracle-prices"],

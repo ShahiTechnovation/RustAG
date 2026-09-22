@@ -166,7 +166,7 @@ const client = new RustagClient({
         code={`// Rehearse a multisig proposal
 const bundle = await client.rehearse({
   proposal: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
-  rpc: "https://mainnet.helius-rpc.com/?api-key=YOUR_KEY",
+  rpc: "https://mainnet.alchemy.com/?api-key=YOUR_KEY",
   failOn: "high",   // throws if any HIGH/CRITICAL alarm fires
 });
 
@@ -289,7 +289,7 @@ curl -s http://127.0.0.1:9000/api/rehearse \\
   -H 'content-type: application/json' \\
   -d '{
     "proposal": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
-    "rpc": "https://mainnet.helius-rpc.com/?api-key=YOUR_KEY"
+    "rpc": "https://mainnet.alchemy.com/?api-key=YOUR_KEY"
   }' | jq '{grade, alarms: .alarms | length}'
 
 # Verify a bundle offline

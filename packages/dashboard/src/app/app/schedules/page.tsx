@@ -53,7 +53,7 @@ export default function SchedulesPage() {
           <Field label="Airdrop to (pubkey)">
             <Input value={pubkey} onChange={(e) => setPubkey(e.target.value)} />
           </Field>
-          <Field label="SOL">
+          <Field label="ETH">
             <Input
               type="number"
               step="0.1"

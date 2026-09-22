@@ -46,7 +46,7 @@ const TVL = {
   key: "tvl_lamports",
   label: "Total value locked",
   color: "#c5f54b",
-  format: (v: number) => `${(v / 1e9).toFixed(3)} SOL`,
+  format: (v: number) => `${(v / 1e9).toFixed(3)} ETH`,
 };
 
 export default function AnalyticsPage() {
@@ -77,7 +77,7 @@ export default function AnalyticsPage() {
                   {isLoading ? (
                     "…"
                   ) : (
-                    <AnimatedNumber value={tvlLatest} format={{ maximumFractionDigits: 3 }} suffix=" SOL" />
+                    <AnimatedNumber value={tvlLatest} format={{ maximumFractionDigits: 3 }} suffix=" ETH" />
                   )}
                 </div>
               </div>

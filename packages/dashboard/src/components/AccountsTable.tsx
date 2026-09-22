@@ -80,7 +80,7 @@ export function AccountsTable() {
               <tr>
                 <th className="label px-5 py-3 text-left font-normal">Pubkey</th>
                 <th className="label px-5 py-3 text-left font-normal">Owner</th>
-                <th className="label px-5 py-3 text-right font-normal">SOL</th>
+                <th className="label px-5 py-3 text-right font-normal">ETH</th>
                 <th className="label px-5 py-3 text-right font-normal">Data</th>
                 <th className="label px-5 py-3 text-left font-normal">Category</th>
                 <th className="label px-5 py-3 text-left font-normal">Sync</th>

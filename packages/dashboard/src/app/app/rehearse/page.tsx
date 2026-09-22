@@ -10,11 +10,11 @@ export const metadata: Metadata = {
 const CLI_EXAMPLES = [
   {
     label: "multisig proposal",
-    cmd: "rustag rehearse --proposal <PROPOSAL_PUBKEY> --rpc $HELIUS_RPC",
+    cmd: "rustag rehearse --proposal <PROPOSAL_PUBKEY> --rpc $ALCHEMY_RPC",
   },
   {
     label: "Raw base64 transaction",
-    cmd: "rustag rehearse --payload <BASE64_TX> --rpc $HELIUS_RPC",
+    cmd: "rustag rehearse --payload <BASE64_TX> --rpc $ALCHEMY_RPC",
   },
   {
     label: "Offline (no network)",
@@ -53,7 +53,7 @@ export default function RehearsePage() {
   -H "Content-Type: application/json" \\
   -d '{
     "payload_b64": "<base64 VersionedTransaction>",
-    "mainnet_rpc": "https://mainnet.helius-rpc.com/?api-key=XXX",
+    "mainnet_rpc": "https://mainnet.alchemy.com/?api-key=XXX",
     "policy_rules": ["upgrade-authority", "large-sol-drain"]
   }'`}
         </pre>

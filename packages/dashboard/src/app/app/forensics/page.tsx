@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 const CLI_EXAMPLES = [
   {
     label: "Re-execute a historical transaction",
-    cmd: "rustag forensics <SIGNATURE> --rpc $HELIUS_RPC",
+    cmd: "rustag forensics <SIGNATURE> --rpc $ALCHEMY_RPC",
   },
   {
     label: "Counterfactual: would this fix have stopped it?",

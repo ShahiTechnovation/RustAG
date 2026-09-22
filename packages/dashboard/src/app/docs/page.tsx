@@ -89,8 +89,8 @@ const STATES = [
   { state: "Pinned" as const, desc: "Set via override. Locked to exactly the value you chose." },
 ];
 
-const QUICKSTART = `# 1. Point at a mainnet RPC (Helius free key recommended)
-export RUSTAG_MAINNET_RPC="https://mainnet.helius-rpc.com/?api-key=YOUR_KEY"
+const QUICKSTART = `# 1. Point at a mainnet RPC (Alchemy free key recommended)
+export RUSTAG_MAINNET_RPC="https://mainnet.alchemy.com/?api-key=YOUR_KEY"
 
 # 2. Rehearse a multisig proposal (built-in demo works without a key)
 rustag rehearse --demo
@@ -249,7 +249,7 @@ export default function DocsHome() {
                   127.0.0.1:8899
                 </code>
                 , WebSocket on <span className="text-fg">:8900</span>, and a REST API on{" "}
-                <span className="text-fg">:9000</span>. Swap one endpoint — Anchor, the Robinhood Chain CLI, and
+                <span className="text-fg">:9000</span>. Swap one endpoint — Foundry, the Robinhood Chain CLI, and
                 @solana/web3.js just work.
               </p>
               <ButtonLink href="/docs/quickstart" variant="secondary" size="md" className="mt-6 group">

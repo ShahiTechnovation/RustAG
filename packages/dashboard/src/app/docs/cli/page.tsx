@@ -124,7 +124,7 @@ export default function CliPage() {
         code={`# multisig proposal
 rustag rehearse \\
   --proposal 7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU \\
-  --rpc $HELIUS_RPC \\
+  --rpc $ALCHEMY_RPC \\
   --fail-on high
 
 # Raw transaction
@@ -187,7 +187,7 @@ rustag rehearse --demo`}
       />
       <CodeBlock
         lang="bash"
-        code={`export RUSTAG_MAINNET_RPC="https://mainnet.helius-rpc.com/?api-key=YOUR_KEY"
+        code={`export RUSTAG_MAINNET_RPC="https://mainnet.alchemy.com/?api-key=YOUR_KEY"
 rustag serve           # REST API on $PORT or 9000`}
       />
 
@@ -291,7 +291,7 @@ rustag forensics <SIGNATURE> \\
       <CodeBlock
         lang="bash"
         code={`rustag create demo
-rustag start demo --preload pyth raydium`}
+rustag start demo --preload oracle dex`}
       />
 
       <H3 id="airdrop">rustag airdrop [-s NAME] &lt;PUBKEY&gt; &lt;ETH&gt;</H3>

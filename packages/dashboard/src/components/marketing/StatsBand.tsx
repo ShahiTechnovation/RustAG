@@ -49,7 +49,7 @@ export function StatsBand() {
                 value={live ? <AnimatedNumber value={data.transactions} /> : "—"}
                 label="Rehearsals executed"
               />
-              <Stat value="$0" label="Mainnet SOL spent" />
+              <Stat value="$0" label="Mainnet ETH spent" />
               <Stat value="Grade A" label="Fidelity standard" />
             </div>
           </div>

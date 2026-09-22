@@ -3,7 +3,7 @@ import { Reveal, Section, Terminal } from "@/components/ui";
 const COPY_TEXT = `# rehearse a multisig multisig proposal
 rustag rehearse \\
   --proposal 7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU \\
-  --rpc $HELIUS_RPC
+  --rpc $ALCHEMY_RPC
 
 # or rehearse a raw transaction
 rustag rehearse --payload <base64_tx> --rpc $RPC
@@ -47,7 +47,7 @@ export function TerminalShowcase() {
             <span className={C.str}>7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU</span>
             {" \\\n  "}
             <span className={C.flag}>--rpc </span>
-            <span className={C.str}>$HELIUS_RPC</span>
+            <span className={C.str}>$ALCHEMY_RPC</span>
             {"\n\n"}
             <span className={C.comment}># forensics: was this exploit stoppable?{"\n"}</span>
             <span className={C.plain}>rustag </span>

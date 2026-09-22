@@ -6,7 +6,7 @@ import { Coins, Download, Pin } from "lucide-react";
 import { useAirdrop, useOverride, usePreload, useStagenet } from "@/lib/hooks";
 import { Button, GlowCard, Input } from "./ui";
 
-const PRELOAD_TARGETS = ["jupiter", "pyth", "raydium", "orca", "marinade", "spl-token"];
+const PRELOAD_TARGETS = ["router", "oracle", "dex", "amm", "staking", "erc20"];
 
 function ActionHeader({ icon, title, hint }: { icon: React.ReactNode; title: string; hint: string }) {
   return (
@@ -43,8 +43,8 @@ export function ActionsPanel() {
       <GlowCard className="space-y-4">
         <ActionHeader
           icon={<Coins size={17} />}
-          title="Airdrop SOL"
-          hint={demo ? "Up to 100 SOL · instant · free." : "Unlimited, instant, free."}
+          title="Airdrop ETH"
+          hint={demo ? "Up to 100 ETH · instant · free." : "Unlimited, instant, free."}
         />
         <div className="space-y-2">
           <Input
@@ -53,7 +53,7 @@ export function ActionsPanel() {
             onChange={(e) => setAirdropPubkey(e.target.value)}
           />
           <Input
-            placeholder="Amount (SOL)"
+            placeholder="Amount (ETH)"
             inputMode="decimal"
             value={airdropSol}
             onChange={(e) => setAirdropSol(e.target.value)}
@@ -131,7 +131,7 @@ export function ActionsPanel() {
         </div>
         {demo ? (
           <p className="text-xs text-faint">
-            The demo already mirrors Pyth, Raydium &amp; token state. Preloading arbitrary programs
+            The demo already mirrors Oracle, Uniswap &amp; token state. Preloading arbitrary programs
             is disabled to protect the upstream RPC.
           </p>
         ) : null}
