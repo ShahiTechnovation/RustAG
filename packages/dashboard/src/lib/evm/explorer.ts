@@ -1,16 +1,5 @@
-import { chainFor, type Network } from "../chains/robinhood";
-
-/** Build a Robinhood Chain explorer URL (respects mainnet/testnet). */
-export function explorerUrl(
-  network: Network,
-  type: "address" | "tx" | "block",
-  value: string | number,
-): string {
-  const base = chainFor(network).explorerUrl.replace(/\/$/, "");
-  return base + "/" + type + "/" + encodeURIComponent(String(value));
+import { chainFor, type Network } from '../chains/robinhood';
+export function explorerUrl(network: Network, type: 'address' | 'tx' | 'block', value: string | number | bigint) {
+  return `${chainFor(network).blockExplorers.default.url.replace(/\/$/, '')}/${type}/${encodeURIComponent(String(value))}`;
 }
-
-/** Truncate an EVM address or hash for display. */
-export function shorten(value: string): string {
-  return value.slice(0, 6) + "\u2026" + value.slice(-4);
-}
+export const shorten = (value: string) => `${value.slice(0, 6)}…${value.slice(-4)}`;

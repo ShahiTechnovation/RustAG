@@ -2,7 +2,7 @@
   "name": "rustag",
   "version": "0.1.0",
   "private": true,
-  "description": "RustAG — GroundTruth pre-execution assurance for Solana. Rehearse Squads proposals, get signed EvidenceBundles, run counterfactual forensics.",
+  "description": "RustAG — Pre-execution assurance for Robinhood Chain. Rehearse privileged transactions, inspect state changes, detect unexpected behavior, and generate verifiable evidence before signing.",
   "packageManager": "pnpm@10.27.0",
   "engines": {
     "node": ">=22"

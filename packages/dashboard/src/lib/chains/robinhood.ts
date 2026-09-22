@@ -1,47 +1,14 @@
-// Robinhood Chain network configuration — single source of truth.
-// Verified against official docs on 2025-09-22. No external dependencies.
+import { defineChain } from 'viem';
 
-export type Network = "mainnet" | "testnet";
-
-export interface ChainConfig {
-  id: number;
-  hex: string;
-  name: string;
-  rpcUrl: string;
-  explorerUrl: string;
-  currency: string;
-  testnet?: boolean;
-}
-
-export const ROBINHOOD_MAINNET: ChainConfig = {
-  id: 4663,
-  hex: "0x1237",
-  name: "Robinhood Chain",
-  rpcUrl: "https://rpc.mainnet.chain.robinhood.com",
-  explorerUrl: "https://robinhoodchain.blockscout.com",
-  currency: "ETH",
-};
-
-export const ROBINHOOD_TESTNET: ChainConfig = {
-  id: 46630,
-  hex: "0xb626",
-  name: "Robinhood Chain Testnet",
-  rpcUrl: "https://rpc.testnet.chain.robinhood.com",
-  explorerUrl: "https://explorer.testnet.chain.robinhood.com",
-  currency: "ETH",
-  testnet: true,
-};
-
-export const defaultNetwork: Network =
-  process.env.NEXT_PUBLIC_ROBINHOOD_NETWORK === "testnet" ? "testnet" : "mainnet";
-
-export function chainFor(network: Network): ChainConfig {
-  if (network === "mainnet") {
-    return {
-      ...ROBINHOOD_MAINNET,
-      rpcUrl: process.env.NEXT_PUBLIC_ROBINHOOD_RPC_URL || ROBINHOOD_MAINNET.rpcUrl,
-      explorerUrl: process.env.NEXT_PUBLIC_ROBINHOOD_EXPLORER_URL || ROBINHOOD_MAINNET.explorerUrl,
-    };
-  }
-  return ROBINHOOD_TESTNET;
+// Verified against https://docs.robinhood.com/chain/connecting/ on 2026-09-22.
+export const robinhoodMainnet = defineChain({ id: 4663, name: 'Robinhood Chain', nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }, rpcUrls: { default: { http: ['https://rpc.mainnet.chain.robinhood.com'] } }, blockExplorers: { default: { name: 'Blockscout', url: 'https://robinhoodchain.blockscout.com' } } });
+export const robinhoodTestnet = defineChain({ id: 46630, name: 'Robinhood Chain Testnet', nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }, rpcUrls: { default: { http: ['https://rpc.testnet.chain.robinhood.com'] } }, blockExplorers: { default: { name: 'Robinhood Explorer', url: 'https://explorer.testnet.chain.robinhood.com' } }, testnet: true });
+export type Network = 'mainnet' | 'testnet';
+export const defaultNetwork: Network = process.env.NEXT_PUBLIC_ROBINHOOD_NETWORK === 'mainnet' ? 'mainnet' : 'testnet';
+export function chainFor(network: Network) {
+  const chain = network === 'mainnet' ? robinhoodMainnet : robinhoodTestnet;
+  // Generic overrides apply ONLY to the configured default network.
+  const rpc = network === 'mainnet' ? process.env.NEXT_PUBLIC_ROBINHOOD_MAINNET_RPC_URL : process.env.NEXT_PUBLIC_ROBINHOOD_TESTNET_RPC_URL;
+  const explorer = network === 'mainnet' ? process.env.NEXT_PUBLIC_ROBINHOOD_MAINNET_EXPLORER_URL : process.env.NEXT_PUBLIC_ROBINHOOD_TESTNET_EXPLORER_URL;
+  return { ...chain, rpcUrls: { default: { http: [rpc || (network === defaultNetwork && process.env.NEXT_PUBLIC_ROBINHOOD_RPC_URL) || chain.rpcUrls.default.http[0]] } }, blockExplorers: { default: { ...chain.blockExplorers.default, url: explorer || (network === defaultNetwork && process.env.NEXT_PUBLIC_ROBINHOOD_EXPLORER_URL) || chain.blockExplorers.default.url } } };
 }
